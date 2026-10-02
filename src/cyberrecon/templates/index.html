@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CyberRecon</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+
+    <nav class="navbar">
+
+        <div class="brand">
+            Cyber<span>Recon</span>
+        </div>
+
+        <div class="nav-status">
+            SECURITY ASSESSMENT PLATFORM
+        </div>
+
+    </nav>
+
+
+    <main class="container">
+
+        <section class="hero">
+
+            <div class="tag">
+                WEB SECURITY ASSESSMENT
+            </div>
+
+            <h1>
+                Discover.
+                <span>Analyze.</span>
+                Secure.
+            </h1>
+
+            <p class="subtitle">
+                CyberRecon is a web-based vulnerability assessment
+                and reconnaissance platform designed to analyze
+                authorized web targets and identify common
+                security weaknesses.
+            </p>
+
+
+            <div class="scanner-card">
+
+                <div class="scanner-heading">
+
+                    <div>
+                        <h2>Target Assessment</h2>
+
+                        <p>
+                            Enter an authorized web target to begin
+                            the assessment.
+                        </p>
+                    </div>
+
+                    <span class="online">
+                        ● SYSTEM ONLINE
+                    </span>
+
+                </div>
+
+
+                <form
+                    action="{{ url_for('scan') }}"
+                    method="POST"
+                >
+
+                    <label for="target">
+                        TARGET URL OR HOSTNAME
+                    </label>
+
+                    <div class="input-container">
+
+                        <span class="prompt">
+                            &gt;
+                        </span>
+
+                        <input
+                            type="text"
+                            id="target"
+                            name="target"
+                            placeholder="https://example.com"
+                            autocomplete="off"
+                            required
+                        >
+
+                        <button type="submit">
+                            Start Assessment
+                        </button>
+
+                    </div>
+
+                </form>
+
+
+                {% if error %}
+
+                    <div class="error">
+                        {{ error }}
+                    </div>
+
+                {% endif %}
+
+
+                <p class="warning">
+                    CyberRecon should only be used against systems
+                    that you own or have explicit permission to assess.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <section class="features">
+
+            <div class="feature-card">
+
+                <div class="feature-number">
+                    01
+                </div>
+
+                <h3>
+                    Reconnaissance
+                </h3>
+
+                <p>
+                    Gather technical information about the target
+                    and its exposed web infrastructure.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <div class="feature-number">
+                    02
+                </div>
+
+                <h3>
+                    Vulnerability Assessment
+                </h3>
+
+                <p>
+                    Analyze HTTP responses and configurations for
+                    common web security weaknesses.
+                </p>
+
+            </div>
+
+
+            <div class="feature-card">
+
+                <div class="feature-number">
+                    03
+                </div>
+
+                <h3>
+                    Security Findings
+                </h3>
+
+                <p>
+                    Present discovered issues with severity,
+                    descriptions and remediation guidance.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+
+        <p>
+            CyberRecon
+            &nbsp;•&nbsp;
+            Web-Based Vulnerability Assessment and Reconnaissance System
+        </p>
+
+    </footer>
+
+</body>
+
+</html>
