@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ scan.scan_id }} | CyberRecon
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<nav class="navbar">
+
+    <div class="brand">
+        Cyber<span>Recon</span>
+    </div>
+
+    <div class="nav-actions">
+
+        <a
+            href="{{ url_for('history') }}"
+            class="nav-link"
+        >
+            Scan History
+        </a>
+
+        <div class="nav-status">
+            STORED ASSESSMENT
+        </div>
+
+    </div>
+
+</nav>
+
+
+<main class="container">
+
+<section class="history-section">
+
+    <div class="tag">
+        ARCHIVED ASSESSMENT
+    </div>
+
+
+    <h1>
+        Scan
+        <span>Details.</span>
+    </h1>
+
+
+    <p class="subtitle">
+
+        Stored CyberRecon assessment
+        {{ scan.scan_id }}.
+
+    </p>
+
+
+    <div class="scan-detail-grid">
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+                SCAN ID
+            </span>
+
+            <strong>
+                {{ scan.scan_id }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+                STATUS
+            </span>
+
+            <strong>
+                {{ scan.recon_status }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+                CHECKS
+            </span>
+
+            <strong>
+                {{ scan.checks_performed }}
+            </strong>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+                DURATION
+            </span>
+
+            <strong>
+                {{ scan.duration_ms }} ms
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="section-heading">
+
+        <h2>
+            Assessment Information
+        </h2>
+
+        <p>
+            Metadata stored for this assessment.
+        </p>
+
+    </div>
+
+
+    <div class="result-panel">
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Target
+            </span>
+
+            <span>
+                {{ scan.target }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Started
+            </span>
+
+            <span>
+                {{ scan.started_at }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Reconnaissance
+            </span>
+
+            <span>
+                {{ scan.recon_status }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Security Analysis
+            </span>
+
+            <span>
+                {{ scan.analysis_status }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Domain
+            </span>
+
+            <span>
+                {{ scan.domain or "Unavailable" }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                IP Address
+            </span>
+
+            <span>
+                {{ scan.ip_address or "Unavailable" }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Final URL
+            </span>
+
+            <span>
+                {{ scan.final_url or "Unavailable" }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                HTTP Status
+            </span>
+
+            <span>
+                {{ scan.http_status }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Page Title
+            </span>
+
+            <span>
+                {{ scan.page_title or "Unavailable" }}
+            </span>
+
+        </div>
+
+
+        <div class="result-row">
+
+            <span class="result-title">
+                Web Server
+            </span>
+
+            <span>
+                {{ scan.server or "Unavailable" }}
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="section-heading">
+
+        <h2>
+            Stored Security Findings
+        </h2>
+
+        <p>
+            Findings recorded when this assessment was performed.
+        </p>
+
+    </div>
+
+
+    {% if findings %}
+
+    <div class="findings-container">
+
+        {% for finding in findings %}
+
+        <div class="finding-card">
+
+            <div class="finding-header">
+
+                <div>
+
+                    <span class="finding-id">
+                        {{ finding.finding_code }}
+                    </span>
+
+                    <h3>
+                        {{ finding.name }}
+                    </h3>
+
+                </div>
+
+
+                <span
+                    class="severity-badge severity-{{ finding.severity|lower }}"
+                >
+                    {{ finding.severity }}
+                </span>
+
+            </div>
+
+
+            <div class="finding-category">
+                {{ finding.category }}
+            </div>
+
+
+            <div class="finding-section">
+
+                <span>
+                    EVIDENCE
+                </span>
+
+                <p>
+                    {{ finding.evidence }}
+                </p>
+
+            </div>
+
+
+            <div class="finding-section">
+
+                <span>
+                    DESCRIPTION
+                </span>
+
+                <p>
+                    {{ finding.description }}
+                </p>
+
+            </div>
+
+
+            <div class="finding-section">
+
+                <span>
+                    RECOMMENDATION
+                </span>
+
+                <p>
+                    {{ finding.recommendation }}
+                </p>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+
+    {% else %}
+
+    <div class="no-history">
+
+        No security findings were stored
+        for this assessment.
+
+        {% if scan.analysis_status == "Skipped" %}
+
+        Security analysis was skipped because
+        reconnaissance did not complete successfully.
+
+        {% endif %}
+
+    </div>
+
+    {% endif %}
+
+
+    <div class="detail-actions">
+
+        <a
+            href="{{ url_for('history') }}"
+            class="back-button"
+        >
+            ← Scan History
+        </a>
+
+        <a
+            href="{{ url_for('home') }}"
+            class="back-button"
+        >
+            New Assessment
+        </a>
+
+    </div>
+
+</section>
+
+</main>
+
+</body>
+
+</html>

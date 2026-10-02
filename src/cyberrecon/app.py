@@ -9,6 +9,7 @@ from cyberrecon.scanner.assessment import (
 )
 
 from cyberrecon.storage import (
+    get_scan_by_id,
     get_scan_history,
     initialize_database,
     save_assessment,
@@ -63,6 +64,25 @@ def create_app():
         return render_template(
             "history.html",
             scans=scans,
+        )
+    
+    @app.route("/history/<scan_id>")
+    def scan_detail(scan_id):
+
+        stored_assessment = get_scan_by_id(
+            scan_id
+        )
+
+        if stored_assessment is None:
+            return (
+                "Stored assessment not found.",
+                404,
+            )
+
+        return render_template(
+            "scan_detail.html",
+            scan=stored_assessment["scan"],
+            findings=stored_assessment["findings"],
         )
 
     return app

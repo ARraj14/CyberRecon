@@ -286,3 +286,48 @@ def get_scan_history(limit=50):
         dict(row)
         for row in rows
     ]
+    
+def get_scan_by_id(scan_id):
+    """
+    Return one stored CyberRecon assessment
+    together with all of its findings.
+    """
+
+    with get_connection() as connection:
+
+        scan = connection.execute(
+            """
+            SELECT *
+            FROM scans
+            WHERE scan_id = ?
+            """,
+            (scan_id,),
+        ).fetchone()
+
+        if scan is None:
+            return None
+
+        findings = connection.execute(
+            """
+            SELECT
+                finding_code,
+                name,
+                category,
+                severity,
+                evidence,
+                description,
+                recommendation
+            FROM findings
+            WHERE scan_database_id = ?
+            ORDER BY id
+            """,
+            (scan["id"],),
+        ).fetchall()
+
+    return {
+        "scan": dict(scan),
+        "findings": [
+            dict(finding)
+            for finding in findings
+        ],
+    }

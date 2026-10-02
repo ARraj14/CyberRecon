@@ -78,8 +78,15 @@
 
                 <tr>
 
-                    <td class="scan-code">
-                        {{ scan.scan_id }}
+                    <td>
+
+                        <a
+                            href="{{ url_for('scan_detail', scan_id=scan.scan_id) }}"
+                            class="scan-code scan-link"
+                        >
+                            {{ scan.scan_id }}
+                        </a>
+
                     </td>
 
                     <td>

@@ -1268,3 +1268,34 @@ footer {
     color: #8192a7;
     background: rgba(10, 18, 30, 0.82);
 }
+
+.scan-link {
+    text-decoration: none;
+}
+
+.scan-link:hover {
+    text-decoration: underline;
+}
+
+.scan-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    max-width: 900px;
+    margin-top: 40px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 800px) {
+
+    .scan-detail-grid {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+}
