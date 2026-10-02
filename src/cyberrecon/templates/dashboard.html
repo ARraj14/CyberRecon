@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Dashboard | CyberRecon
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<nav class="navbar">
+
+    <div class="brand">
+        Cyber<span>Recon</span>
+    </div>
+
+    <div class="nav-actions">
+
+        <a
+            href="{{ url_for('home') }}"
+            class="nav-link"
+        >
+            New Assessment
+        </a>
+
+        <a
+            href="{{ url_for('history') }}"
+            class="nav-link"
+        >
+            Scan History
+        </a>
+
+        <a
+            href="{{ url_for('compare_scans') }}"
+            class="nav-link"
+        >
+            Compare
+        </a>
+
+        <div class="nav-status">
+            ANALYTICS DASHBOARD
+        </div>
+
+    </div>
+
+</nav>
+
+
+<main class="container">
+
+<section class="dashboard-section">
+
+    <div class="tag">
+        SECURITY ANALYTICS
+    </div>
+
+    <h1>
+        CyberRecon
+        <span>Dashboard.</span>
+    </h1>
+
+    <p class="subtitle">
+        Overview of stored assessments,
+        findings and recent activity.
+    </p>
+
+
+    <div class="dashboard-overview">
+
+        <div class="dashboard-card">
+
+            <span>
+                TOTAL ASSESSMENTS
+            </span>
+
+            <strong>
+                {{ analytics.overview.total_scans }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                SUCCESSFUL
+            </span>
+
+            <strong class="dashboard-success">
+                {{ analytics.overview.successful_scans }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                FAILED
+            </span>
+
+            <strong class="dashboard-failed">
+                {{ analytics.overview.failed_scans }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                UNIQUE TARGETS
+            </span>
+
+            <strong>
+                {{ analytics.overview.unique_targets }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                SUCCESS RATE
+            </span>
+
+            <strong>
+                {{ analytics.success_rate }}%
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="section-heading">
+
+        <h2>
+            Finding Severity
+        </h2>
+
+        <p>
+            Severity distribution across
+            all stored assessments.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-severity">
+
+        <div class="severity-stat">
+
+            <span>
+                TOTAL FINDINGS
+            </span>
+
+            <strong>
+                {{ analytics.severity.total_findings }}
+            </strong>
+
+        </div>
+
+
+        <div class="severity-stat severity-high">
+
+            <span>
+                HIGH
+            </span>
+
+            <strong>
+                {{ analytics.severity.high_count }}
+            </strong>
+
+        </div>
+
+
+        <div class="severity-stat severity-medium">
+
+            <span>
+                MEDIUM
+            </span>
+
+            <strong>
+                {{ analytics.severity.medium_count }}
+            </strong>
+
+        </div>
+
+
+        <div class="severity-stat severity-low">
+
+            <span>
+                LOW
+            </span>
+
+            <strong>
+                {{ analytics.severity.low_count }}
+            </strong>
+
+        </div>
+
+
+        <div class="severity-stat severity-info">
+
+            <span>
+                INFO
+            </span>
+
+            <strong>
+                {{ analytics.severity.info_count }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="dashboard-grid">
+
+        <section>
+
+            <div class="section-heading">
+
+                <h2>
+                    Recent Assessments
+                </h2>
+
+                <p>
+                    Latest CyberRecon activity.
+                </p>
+
+            </div>
+
+
+            <div class="dashboard-panel">
+
+                {% for scan in analytics.recent_scans %}
+
+                <a
+                    href="{{ url_for('scan_detail', scan_id=scan.scan_id) }}"
+                    class="recent-scan-row"
+                >
+
+                    <div>
+
+                        <span class="scan-code">
+                            {{ scan.scan_id }}
+                        </span>
+
+                        <strong>
+                            {{ scan.target }}
+                        </strong>
+
+                        <p>
+                            {{ scan.started_at }}
+                        </p>
+
+                    </div>
+
+
+                    {% if scan.recon_status == "Completed" %}
+
+                    <span class="history-status success">
+                        Completed
+                    </span>
+
+                    {% else %}
+
+                    <span class="history-status failed-text">
+                        Failed
+                    </span>
+
+                    {% endif %}
+
+                </a>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+        <section>
+
+            <div class="section-heading">
+
+                <h2>
+                    Common Findings
+                </h2>
+
+                <p>
+                    Most frequently detected findings.
+                </p>
+
+            </div>
+
+
+            <div class="dashboard-panel">
+
+                {% for finding in analytics.common_findings %}
+
+                <div class="common-finding-row">
+
+                    <div>
+
+                        <span class="finding-id">
+                            {{ finding.finding_code }}
+                        </span>
+
+                        <strong>
+                            {{ finding.name }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="finding-frequency">
+
+                        <span
+                            class="severity-badge severity-{{ finding.severity|lower }}"
+                        >
+                            {{ finding.severity }}
+                        </span>
+
+                        <strong>
+                            {{ finding.occurrence_count }}×
+                        </strong>
+
+                    </div>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+    </div>
+
+</section>
+
+</main>
+
+</body>
+
+</html>

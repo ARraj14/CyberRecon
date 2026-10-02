@@ -27,8 +27,26 @@
         Cyber<span>Recon</span>
     </div>
 
-    <div class="nav-status">
-        SCAN HISTORY
+    <div class="nav-actions">
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="nav-link"
+        >
+            Dashboard
+        </a>
+
+        <a
+            href="{{ url_for('compare_scans') }}"
+            class="nav-link"
+        >
+            Compare
+        </a>
+
+        <div class="nav-status">
+            SCAN HISTORY
+        </div>
+
     </div>
 
 </nav>

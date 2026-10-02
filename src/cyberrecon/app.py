@@ -10,6 +10,7 @@ from cyberrecon.scanner.assessment import (
 
 from cyberrecon.storage import (
     get_completed_scans,
+    get_dashboard_analytics,
     get_scan_by_id,
     get_scan_history,
     initialize_database,
@@ -25,6 +26,16 @@ def create_app():
     app = Flask(__name__)
 
     initialize_database()
+    
+    @app.route("/dashboard")
+    def dashboard():
+
+        analytics = get_dashboard_analytics()
+
+        return render_template(
+            "dashboard.html",
+            analytics=analytics,
+        )
 
     @app.route("/")
     def home():

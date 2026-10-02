@@ -364,3 +364,193 @@ def get_completed_scans(limit=100):
         dict(row)
         for row in rows
     ]
+    
+def get_dashboard_analytics():
+    """
+    Build summary statistics for the CyberRecon
+    analytics dashboard.
+    """
+
+    with get_connection() as connection:
+
+        overview = connection.execute(
+            """
+            SELECT
+                COUNT(*) AS total_scans,
+
+                COUNT(
+                    DISTINCT target
+                ) AS unique_targets,
+
+                SUM(
+                    CASE
+                        WHEN recon_status = 'Completed'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS successful_scans,
+
+                SUM(
+                    CASE
+                        WHEN recon_status = 'Failed'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS failed_scans
+
+            FROM scans
+            """
+        ).fetchone()
+
+
+        severity = connection.execute(
+            """
+            SELECT
+                COUNT(*) AS total_findings,
+
+                SUM(
+                    CASE
+                        WHEN severity = 'High'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS high_count,
+
+                SUM(
+                    CASE
+                        WHEN severity = 'Medium'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS medium_count,
+
+                SUM(
+                    CASE
+                        WHEN severity = 'Low'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS low_count,
+
+                SUM(
+                    CASE
+                        WHEN severity = 'Info'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS info_count
+
+            FROM findings
+            """
+        ).fetchone()
+
+
+        recent_scans = connection.execute(
+            """
+            SELECT
+                scan_id,
+                target,
+                started_at,
+                recon_status,
+                analysis_status
+
+            FROM scans
+
+            ORDER BY id DESC
+
+            LIMIT 5
+            """
+        ).fetchall()
+
+
+        common_findings = connection.execute(
+            """
+            SELECT
+                finding_code,
+                name,
+                severity,
+                COUNT(*) AS occurrence_count
+
+            FROM findings
+
+            GROUP BY
+                finding_code,
+                name,
+                severity
+
+            ORDER BY
+                occurrence_count DESC,
+                finding_code ASC
+
+            LIMIT 5
+            """
+        ).fetchall()
+
+
+    overview_data = dict(overview)
+
+    severity_data = dict(severity)
+
+
+    # SQLite SUM() may return None when
+    # the database contains no matching rows.
+    for key in (
+        "successful_scans",
+        "failed_scans",
+    ):
+        overview_data[key] = (
+            overview_data[key] or 0
+        )
+
+
+    for key in (
+        "total_findings",
+        "high_count",
+        "medium_count",
+        "low_count",
+        "info_count",
+    ):
+        severity_data[key] = (
+            severity_data[key] or 0
+        )
+
+
+    total_scans = overview_data[
+        "total_scans"
+    ]
+
+
+    if total_scans > 0:
+
+        success_rate = round(
+            (
+                overview_data[
+                    "successful_scans"
+                ]
+                / total_scans
+            )
+            * 100,
+            1,
+        )
+
+    else:
+        success_rate = 0
+
+
+    return {
+        "overview": overview_data,
+
+        "severity": severity_data,
+
+        "success_rate": success_rate,
+
+        "recent_scans": [
+            dict(scan)
+            for scan in recent_scans
+        ],
+
+        "common_findings": [
+            dict(finding)
+            for finding in common_findings
+        ],
+    }
