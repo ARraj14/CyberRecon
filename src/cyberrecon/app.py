@@ -9,10 +9,15 @@ from cyberrecon.scanner.assessment import (
 )
 
 from cyberrecon.storage import (
+    get_completed_scans,
     get_scan_by_id,
     get_scan_history,
     initialize_database,
     save_assessment,
+)
+
+from cyberrecon.scanner.comparison import (
+    compare_assessments,
 )
 
 
@@ -85,4 +90,77 @@ def create_app():
             findings=stored_assessment["findings"],
         )
 
+    @app.route("/compare")
+    def compare_scans():
+    
+            scans = get_completed_scans()
+    
+            baseline_id = request.args.get(
+                "baseline"
+            )
+    
+            current_id = request.args.get(
+                "current"
+            )
+    
+            comparison = None
+            comparison_error = None
+    
+            if baseline_id and current_id:
+    
+                baseline_assessment = (
+                    get_scan_by_id(
+                        baseline_id
+                    )
+                )
+    
+                current_assessment = (
+                    get_scan_by_id(
+                        current_id
+                    )
+                )
+    
+                if (
+                    baseline_assessment is None
+                    or current_assessment is None
+                ):
+                    comparison_error = (
+                        "One or both stored assessments "
+                        "could not be found."
+                    )
+    
+                elif baseline_id == current_id:
+                    comparison_error = (
+                        "Please select two different assessments."
+                    )
+    
+                else:
+    
+                    try:
+    
+                        comparison = (
+                            compare_assessments(
+                                baseline_assessment,
+                                current_assessment,
+                            )
+                        )
+    
+                    except ValueError as error:
+    
+                        comparison_error = str(
+                            error
+                        )
+    
+            return render_template(
+                "compare.html",
+                scans=scans,
+                comparison=comparison,
+                comparison_error=comparison_error,
+                selected_baseline=baseline_id,
+                selected_current=current_id,
+            )
+            
     return app
+
+
+    

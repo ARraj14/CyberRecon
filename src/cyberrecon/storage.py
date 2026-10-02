@@ -331,3 +331,36 @@ def get_scan_by_id(scan_id):
             for finding in findings
         ],
     }
+        
+def get_completed_scans(limit=100):
+    """
+    Return successful stored assessments
+    that can be used for comparison.
+    """
+
+    with get_connection() as connection:
+
+        rows = connection.execute(
+            """
+            SELECT
+                scan_id,
+                target,
+                started_at,
+                domain,
+                analysis_status
+
+            FROM scans
+
+            WHERE analysis_status = 'Completed'
+
+            ORDER BY id DESC
+
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
