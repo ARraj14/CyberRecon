@@ -405,17 +405,24 @@
         </a>
 
         <a
-            href="{{ url_for('home') }}"
-            class="back-button"
-        >
-            New Assessment
-        </a>
-
-        <a
             href="{{ url_for('compare_scans', current=scan.scan_id) }}"
             class="back-button"
         >
             Compare This Assessment
+        </a>
+
+        <a
+            href="{{ url_for('assessment_report', scan_id=scan.scan_id) }}"
+            class="back-button"
+        >
+            Download Assessment Report
+        </a>
+        
+        <a
+            href="{{ url_for('home') }}"
+            class="back-button"
+        >
+            New Assessment
         </a>
 
     </div>

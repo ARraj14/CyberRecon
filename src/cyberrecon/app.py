@@ -1,5 +1,6 @@
 from flask import (
     Flask,
+    make_response,
     render_template,
     request,
 )
@@ -100,76 +101,138 @@ def create_app():
             scan=stored_assessment["scan"],
             findings=stored_assessment["findings"],
         )
+    
+    @app.route("/history/<scan_id>/report")
+    def assessment_report(scan_id):
 
+        stored_assessment = get_scan_by_id(
+            scan_id
+        )
+
+        if stored_assessment is None:
+            return (
+                "Stored assessment not found.",
+                404,
+            )
+
+        scan = stored_assessment["scan"]
+        findings = stored_assessment["findings"]
+
+        severity_summary = {
+            "High": 0,
+            "Medium": 0,
+            "Low": 0,
+            "Info": 0,
+            "Total": len(findings),
+        }
+
+        for finding in findings:
+
+            severity = finding.get(
+                "severity"
+            )
+
+            if severity in severity_summary:
+                severity_summary[
+                    severity
+                ] += 1
+
+        rendered_report = render_template(
+            "report.html",
+            scan=scan,
+            findings=findings,
+            severity_summary=severity_summary,
+        )
+
+        response = make_response(
+            rendered_report
+        )
+
+        filename = (
+            f"CyberRecon_{scan_id}_Report.html"
+        )
+
+        response.headers[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        response.headers[
+            "Content-Type"
+        ] = "text/html; charset=utf-8"
+
+        return response
+    
     @app.route("/compare")
     def compare_scans():
     
-            scans = get_completed_scans()
+        scans = get_completed_scans()
     
-            baseline_id = request.args.get(
-                "baseline"
+        baseline_id = request.args.get(
+            "baseline"
+        )
+    
+        current_id = request.args.get(
+            "current"
+        )
+    
+        comparison = None
+        comparison_error = None
+    
+        if baseline_id and current_id:
+    
+            baseline_assessment = (
+                get_scan_by_id(
+                    baseline_id
+                )
             )
     
-            current_id = request.args.get(
-                "current"
+            current_assessment = (
+                get_scan_by_id(
+                    current_id
+                )
             )
     
-            comparison = None
-            comparison_error = None
-    
-            if baseline_id and current_id:
-    
-                baseline_assessment = (
-                    get_scan_by_id(
-                        baseline_id
-                    )
+            if (
+                baseline_assessment is None
+                or current_assessment is None
+            ):
+                comparison_error = (
+                    "One or both stored assessments "
+                    "could not be found."
                 )
     
-                current_assessment = (
-                    get_scan_by_id(
-                        current_id
-                    )
+            elif baseline_id == current_id:
+                comparison_error = (
+                    "Please select two different assessments."
                 )
     
-                if (
-                    baseline_assessment is None
-                    or current_assessment is None
-                ):
-                    comparison_error = (
-                        "One or both stored assessments "
-                        "could not be found."
+            else:
+    
+                try:
+    
+                    comparison = (
+                        compare_assessments(
+                            baseline_assessment,
+                            current_assessment,
+                        )
                     )
     
-                elif baseline_id == current_id:
-                    comparison_error = (
-                        "Please select two different assessments."
+                except ValueError as error:
+    
+                    comparison_error = str(
+                    error
                     )
     
-                else:
-    
-                    try:
-    
-                        comparison = (
-                            compare_assessments(
-                                baseline_assessment,
-                                current_assessment,
-                            )
-                        )
-    
-                    except ValueError as error:
-    
-                        comparison_error = str(
-                            error
-                        )
-    
-            return render_template(
-                "compare.html",
-                scans=scans,
-                comparison=comparison,
-                comparison_error=comparison_error,
-                selected_baseline=baseline_id,
-                selected_current=current_id,
-            )
+        return render_template(
+            "compare.html",
+            scans=scans,    
+            comparison=comparison,
+            comparison_error=comparison_error,
+            selected_baseline=baseline_id,
+            selected_current=current_id,
+        )
             
     return app
 
