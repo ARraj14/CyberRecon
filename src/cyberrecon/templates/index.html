@@ -9,7 +9,9 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>CyberRecon</title>
+    <title>
+        CyberRecon | Web Security Assessment
+    </title>
 
     <link
         rel="stylesheet"
@@ -17,240 +19,167 @@
     >
 </head>
 
+
 <body>
 
-    <nav class="navbar">
+<nav class="navbar">
 
-        <div class="brand">
-            Cyber<span>Recon</span>
+    <div class="brand">
+        Cyber<span>Recon</span>
+    </div>
+
+    <div class="nav-actions">
+
+        {% if current_user_id %}
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="nav-link"
+        >
+            Dashboard
+        </a>
+
+        <a
+            href="{{ url_for('history') }}"
+            class="nav-link"
+        >
+            Scan History
+        </a>
+
+        <a
+            href="{{ url_for('compare_scans') }}"
+            class="nav-link"
+        >
+            Compare
+        </a>
+
+        <span class="nav-user">
+            {{ current_username }}
+        </span>
+
+        <a
+            href="{{ url_for('logout') }}"
+            class="nav-link"
+        >
+            Logout
+        </a>
+
+        {% else %}
+
+        <a
+            href="{{ url_for('login') }}"
+            class="nav-link"
+        >
+            Login
+        </a>
+
+        <a
+            href="{{ url_for('register') }}"
+            class="nav-link"
+        >
+            Register
+        </a>
+
+        {% endif %}
+
+        <div class="nav-status">
+            PASSIVE ASSESSMENT
         </div>
 
-        <div class="nav-actions">
+    </div>
 
-            <a
-                href="{{ url_for('home') }}"
-                class="nav-link"
+</nav>
+
+
+<main class="container">
+
+<section class="hero-section">
+
+    <div class="tag">
+        WEB SECURITY ASSESSMENT PLATFORM
+    </div>
+
+    <h1>
+        Discover.
+        Analyse.
+        <span>Understand.</span>
+    </h1>
+
+    <p class="subtitle">
+        CyberRecon performs passive reconnaissance
+        and security-configuration analysis against
+        authorized HTTP and HTTPS targets.
+    </p>
+
+
+    {% if error %}
+
+    <div class="error-message">
+        {{ error }}
+    </div>
+
+    {% endif %}
+
+
+    <div class="scan-panel">
+
+        <form
+            action="{{ url_for('scan') }}"
+            method="POST"
+            class="scan-form"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
             >
-                New Assessment
-            </a>
 
-            <a
-                href="{{ url_for('history') }}"
-                class="nav-link"
+            <label for="target">
+                Authorized Target
+            </label>
+
+            <input
+                id="target"
+                name="target"
+                type="text"
+                value="{{ target or '' }}"
+                placeholder="example.com or https://example.com"
+                autocomplete="off"
+                required
             >
-                Scan History
-            </a>
 
-            <a
-                href="{{ url_for('compare_scans') }}"
-                class="nav-link"
+            <button
+                type="submit"
+                class="scan-button"
             >
-                Compare
-            </a>
+                Start Assessment
+            </button>
 
-            {% if current_user_id %}
+        </form>
 
-                <span class="nav-user">
-                    {{ current_username }}
-                </span>
-
-                <a
-                    href="{{ url_for('logout') }}"
-                    class="nav-link"
-                >
-                    Logout
-                </a>
-
-            {% else %}
-
-                <a
-                    href="{{ url_for('login') }}"
-                    class="nav-link"
-                >
-                    Login
-                </a>
-
-                <a
-                    href="{{ url_for('register') }}"
-                    class="nav-link"
-                >
-                    Register
-                </a>
-
-            {% endif %}
-
-            <div class="nav-status">
-                ANALYTICS DASHBOARD
-            </div>
-
-        </div>
-    
-    </nav>
+    </div>
 
 
-    <main class="container">
+    <div class="authorization-notice">
 
-        <section class="hero">
-
-            <div class="tag">
-                WEB SECURITY ASSESSMENT
-            </div>
-
-            <h1>
-                Discover.
-                <span>Analyze.</span>
-                Secure.
-            </h1>
-
-            <p class="subtitle">
-                CyberRecon is a web-based vulnerability assessment
-                and reconnaissance platform designed to analyze
-                authorized web targets and identify common
-                security weaknesses.
-            </p>
-
-
-            <div class="scanner-card">
-
-                <div class="scanner-heading">
-
-                    <div>
-                        <h2>Target Assessment</h2>
-
-                        <p>
-                            Enter an authorized web target to begin
-                            the assessment.
-                        </p>
-                    </div>
-
-                    <span class="online">
-                        ● SYSTEM ONLINE
-                    </span>
-
-                </div>
-
-
-                <form
-                    action="{{ url_for('scan') }}"
-                    method="POST"
-                >
-
-                    <label for="target">
-                        TARGET URL OR HOSTNAME
-                    </label>
-
-                    <div class="input-container">
-
-                        <span class="prompt">
-                            &gt;
-                        </span>
-
-                        <input
-                            type="text"
-                            id="target"
-                            name="target"
-                            placeholder="https://example.com"
-                            autocomplete="off"
-                            required
-                        >
-
-                        <button type="submit">
-                            Start Assessment
-                        </button>
-
-                    </div>
-
-                </form>
-
-
-                {% if error %}
-
-                    <div class="error">
-                        {{ error }}
-                    </div>
-
-                {% endif %}
-
-
-                <p class="warning">
-                    CyberRecon should only be used against systems
-                    that you own or have explicit permission to assess.
-                </p>
-
-            </div>
-
-        </section>
-
-
-        <section class="features">
-
-            <div class="feature-card">
-
-                <div class="feature-number">
-                    01
-                </div>
-
-                <h3>
-                    Reconnaissance
-                </h3>
-
-                <p>
-                    Gather technical information about the target
-                    and its exposed web infrastructure.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <div class="feature-number">
-                    02
-                </div>
-
-                <h3>
-                    Vulnerability Assessment
-                </h3>
-
-                <p>
-                    Analyze HTTP responses and configurations for
-                    common web security weaknesses.
-                </p>
-
-            </div>
-
-
-            <div class="feature-card">
-
-                <div class="feature-number">
-                    03
-                </div>
-
-                <h3>
-                    Security Findings
-                </h3>
-
-                <p>
-                    Present discovered issues with severity,
-                    descriptions and remediation guidance.
-                </p>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <footer>
+        <strong>
+            Authorization Required
+        </strong>
 
         <p>
-            CyberRecon
-            &nbsp;•&nbsp;
-            Web-Based Vulnerability Assessment and Reconnaissance System
+            Only assess systems you own or systems
+            for which you have explicit permission.
+            CyberRecon currently performs passive
+            HTTP/DNS-based analysis and does not
+            perform exploitation or brute-force attacks.
         </p>
 
-    </footer>
+    </div>
+
+</section>
+
+</main>
 
 </body>
 

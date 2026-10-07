@@ -1,9 +1,7 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta
@@ -20,11 +18,73 @@
         href="{{ url_for('static', filename='css/style.css') }}"
     >
 
+    <style>
+        .auth-container {
+            width: min(460px, 92%);
+            margin: 80px auto;
+        }
+
+        .auth-card {
+            padding: 32px;
+            border: 1px solid #1d3448;
+            border-radius: 12px;
+            background: rgba(8, 17, 28, 0.9);
+        }
+
+        .auth-card h1 {
+            margin-top: 0;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 18px;
+            margin-top: 28px;
+        }
+
+        .auth-form label {
+            display: block;
+            margin-bottom: 7px;
+            color: #8295a8;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border: 1px solid #294258;
+            border-radius: 7px;
+            background: #08131f;
+            color: #d8e4ed;
+        }
+
+        .auth-form button {
+            padding: 13px;
+            border: 0;
+            border-radius: 7px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .auth-error {
+            margin-top: 18px;
+            padding: 12px;
+            border-radius: 7px;
+            color: #ff8e98;
+            background: rgba(150, 35, 45, 0.15);
+        }
+
+        .auth-footer {
+            margin-top: 20px;
+            color: #8295a8;
+        }
+    </style>
 </head>
 
 
 <body>
-
 
 <nav class="navbar">
 
@@ -48,51 +108,33 @@
             Register
         </a>
 
-        <div class="nav-status">
-            USER LOGIN
-        </div>
-
     </div>
 
 </nav>
 
 
-<main class="container">
-
-
-<section class="auth-section">
-
+<main class="auth-container">
 
     <div class="auth-card">
 
-
         <div class="tag">
-            SECURE ACCESS
+            AUTHENTICATION
         </div>
 
-
         <h1>
-
             Sign in to
-
-            <span>
-                CyberRecon.
-            </span>
-
+            <span>CyberRecon.</span>
         </h1>
 
-
-        <p class="auth-subtitle">
-
-            Access your security assessments,
-            reports and analytics.
-
+        <p class="subtitle">
+            Access your assessments, dashboard,
+            reports and historical comparisons.
         </p>
 
 
         {% if error %}
 
-        <div class="auth-message auth-error">
+        <div class="auth-error">
             {{ error }}
         </div>
 
@@ -101,78 +143,70 @@
 
         <form
             method="POST"
+            action="{{ url_for('login', next=request.args.get('next')) }}"
             class="auth-form"
         >
 
-            {% if request.args.get('next') %}
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
 
             <input
                 type="hidden"
                 name="next"
-                value="{{ request.args.get('next') }}"
-            >
-
-            {% endif %}
-
-
-            <label for="email">
-                Email Address
-            </label>
-
-
-            <input
-                type="email"
-                id="email"
-                name="email"
-                autocomplete="email"
-                required
+                value="{{ request.args.get('next', '') }}"
             >
 
 
-            <label for="password">
-                Password
-            </label>
+            <div>
+                <label for="email">
+                    EMAIL ADDRESS
+                </label>
+
+                <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                >
+            </div>
 
 
-            <input
-                type="password"
-                id="password"
-                name="password"
-                autocomplete="current-password"
-                required
-            >
+            <div>
+                <label for="password">
+                    PASSWORD
+                </label>
+
+                <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
 
 
-            <button
-                type="submit"
-                class="auth-button"
-            >
-                Sign In
+            <button type="submit">
+                Login
             </button>
-
 
         </form>
 
 
-        <p class="auth-note">
-
+        <p class="auth-footer">
             Don't have an account?
-
             <a href="{{ url_for('register') }}">
-                Create one
+                Register
             </a>
-
         </p>
-
 
     </div>
 
-
-</section>
-
-
 </main>
-
 
 </body>
 

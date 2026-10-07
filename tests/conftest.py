@@ -11,15 +11,10 @@ def app(
     monkeypatch,
 ):
     """
-    Create an isolated CyberRecon Flask application
-    for each test.
+    Create an isolated CyberRecon application.
 
-    Every test receives:
-    - its own SQLite database
-    - a deterministic Flask secret key
-    - testing mode enabled
-
-    The real development database is never modified.
+    The real development SQLite database is never
+    modified by the automated test suite.
     """
 
     test_database = (
@@ -38,13 +33,19 @@ def app(
         "cyberrecon-test-secret-key",
     )
 
-    application = create_app()
+    application = create_app(
+        {
+            "TESTING": True,
 
-    application.config.update(
-        TESTING=True,
-        SECRET_KEY=(
-            "cyberrecon-test-secret-key"
-        ),
+            "SECRET_KEY":
+                "cyberrecon-test-secret-key",
+
+            # Existing application tests focus on
+            # their own behavior. CSRF has its own
+            # dedicated suite.
+            "CSRF_PROTECTION_ENABLED":
+                False,
+        }
     )
 
     yield application
@@ -52,19 +53,12 @@ def app(
 
 @pytest.fixture
 def client(app):
-    """
-    Flask test client.
-    """
 
     return app.test_client()
 
 
 @pytest.fixture
 def register_user():
-    """
-    Helper for registering users through the
-    actual CyberRecon registration route.
-    """
 
     def _register(
         client,
@@ -96,10 +90,6 @@ def register_user():
 
 @pytest.fixture
 def login_user():
-    """
-    Helper for logging in through the
-    CyberRecon login route.
-    """
 
     def _login(
         client,
@@ -128,9 +118,6 @@ def authenticated_client(
     register_user,
     login_user,
 ):
-    """
-    Return a client with one authenticated user.
-    """
 
     register_user(
         client

@@ -1,9 +1,13 @@
+import hmac
 import os
 import re
 import secrets
+import sqlite3
 
+from datetime import timedelta
 from functools import wraps
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from flask import (
     Flask,
@@ -20,13 +24,8 @@ from werkzeug.security import (
     generate_password_hash,
 )
 
-from cyberrecon.scanner.assessment import (
-    run_assessment,
-)
-
-from cyberrecon.scanner.comparison import (
-    compare_assessments,
-)
+from cyberrecon.scanner.assessment import run_assessment
+from cyberrecon.scanner.comparison import compare_assessments
 
 from cyberrecon.storage import (
     create_user,
@@ -41,14 +40,20 @@ from cyberrecon.storage import (
 )
 
 
+# =========================================================
+# APPLICATION SECURITY HELPERS
+# =========================================================
+
+
 def get_secret_key():
     """
-    Return a stable secret key for Flask sessions.
+    Return a stable Flask session secret.
 
-    Production may provide CYBERRECON_SECRET_KEY.
+    Production:
+        CYBERRECON_SECRET_KEY=<strong random secret>
 
-    During local development, CyberRecon creates
-    a persistent random key inside data/.
+    Development:
+        data/.session_secret
     """
 
     environment_key = os.environ.get(
@@ -74,12 +79,16 @@ def get_secret_key():
     )
 
     if secret_file.exists():
-
         stored_key = secret_file.read_text(
             encoding="utf-8"
         ).strip()
 
         if stored_key:
+            try:
+                secret_file.chmod(0o600)
+            except OSError:
+                pass
+
             return stored_key
 
     secret_key = secrets.token_hex(32)
@@ -88,6 +97,11 @@ def get_secret_key():
         secret_key,
         encoding="utf-8",
     )
+
+    try:
+        secret_file.chmod(0o600)
+    except OSError:
+        pass
 
     return secret_key
 
@@ -98,13 +112,9 @@ def login_required(view_function):
     """
 
     @wraps(view_function)
-    def wrapped_view(
-        *args,
-        **kwargs,
-    ):
+    def wrapped_view(*args, **kwargs):
 
         if session.get("user_id") is None:
-
             return redirect(
                 url_for(
                     "login",
@@ -120,37 +130,283 @@ def login_required(view_function):
     return wrapped_view
 
 
-def create_app():
+def is_safe_local_redirect(target):
+    """
+    Permit only local application redirects.
+    """
+
+    if not target:
+        return False
+
+    parsed = urlsplit(target)
+
+    if parsed.scheme:
+        return False
+
+    if parsed.netloc:
+        return False
+
+    if not target.startswith("/"):
+        return False
+
+    if target.startswith("//"):
+        return False
+
+    return True
+
+
+# =========================================================
+# CSRF PROTECTION
+# =========================================================
+
+
+def generate_csrf_token():
+    """
+    Return the CSRF token stored in the current session.
+
+    A cryptographically random token is generated if
+    the session does not already contain one.
+    """
+
+    token = session.get("_csrf_token")
+
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+
+    return token
+
+
+def validate_csrf_token(submitted_token):
+    """
+    Compare the submitted CSRF token with the token
+    stored in the user's session.
+    """
+
+    stored_token = session.get(
+        "_csrf_token"
+    )
+
+    if not stored_token:
+        return False
+
+    if not submitted_token:
+        return False
+
+    if not isinstance(
+        submitted_token,
+        str,
+    ):
+        return False
+
+    try:
+        return hmac.compare_digest(
+            stored_token,
+            submitted_token,
+        )
+
+    except TypeError:
+        return False
+
+
+# =========================================================
+# APPLICATION FACTORY
+# =========================================================
+
+
+def create_app(test_config=None):
 
     app = Flask(__name__)
 
+    app.config.update(
+        SECRET_KEY=get_secret_key(),
 
-    # =====================================================
-    # CONFIGURATION
-    # =====================================================
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
 
-    app.config[
-        "SECRET_KEY"
-    ] = get_secret_key()
+        SESSION_COOKIE_SECURE=(
+            os.environ.get(
+                "CYBERRECON_SECURE_COOKIES",
+                "0",
+            )
+            == "1"
+        ),
 
-    app.config[
-        "SESSION_COOKIE_HTTPONLY"
-    ] = True
+        PERMANENT_SESSION_LIFETIME=timedelta(
+            hours=8
+        ),
 
-    app.config[
-        "SESSION_COOKIE_SAMESITE"
-    ] = "Lax"
+        MAX_CONTENT_LENGTH=64 * 1024,
 
+        # Enabled by default in the real application.
+        CSRF_PROTECTION_ENABLED=True,
+    )
+
+    if test_config:
+        app.config.update(
+            test_config
+        )
 
     initialize_database()
 
 
     # =====================================================
-    # TEMPLATE USER CONTEXT
+    # CSRF VALIDATION
+    # =====================================================
+
+    @app.before_request
+    def protect_post_requests():
+        """
+        Validate all POST requests.
+
+        This automatically protects present and future
+        CyberRecon POST routes unless explicitly disabled
+        in the test configuration.
+        """
+
+        if not app.config.get(
+            "CSRF_PROTECTION_ENABLED",
+            True,
+        ):
+            return None
+
+        if request.method != "POST":
+            return None
+
+        submitted_token = (
+            request.form.get(
+                "csrf_token"
+            )
+            or request.headers.get(
+                "X-CSRF-Token"
+            )
+        )
+
+        if not validate_csrf_token(
+            submitted_token
+        ):
+            return (
+                "Invalid or missing CSRF token.",
+                400,
+            )
+
+        return None
+
+
+    # =====================================================
+    # SECURITY RESPONSE HEADERS
+    # =====================================================
+
+    @app.after_request
+    def apply_security_headers(response):
+
+        response.headers[
+            "X-Content-Type-Options"
+        ] = "nosniff"
+
+        response.headers[
+            "X-Frame-Options"
+        ] = "DENY"
+
+        response.headers[
+            "Referrer-Policy"
+        ] = (
+            "strict-origin-when-cross-origin"
+        )
+
+        response.headers[
+            "Permissions-Policy"
+        ] = (
+            "camera=(), "
+            "microphone=(), "
+            "geolocation=()"
+        )
+
+        response.headers[
+            "Content-Security-Policy"
+        ] = (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'; "
+            "img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline'"
+        )
+
+        if request.endpoint != "static":
+
+            response.headers[
+                "Cache-Control"
+            ] = (
+                "no-store, "
+                "no-cache, "
+                "must-revalidate, "
+                "max-age=0"
+            )
+
+            response.headers[
+                "Pragma"
+            ] = "no-cache"
+
+        if (
+            request.is_secure
+            and os.environ.get(
+                "CYBERRECON_ENABLE_HSTS",
+                "0",
+            )
+            == "1"
+        ):
+
+            response.headers[
+                "Strict-Transport-Security"
+            ] = (
+                "max-age=31536000; "
+                "includeSubDomains"
+            )
+
+        return response
+
+
+    # =====================================================
+    # ERROR HANDLERS
+    # =====================================================
+
+    @app.errorhandler(404)
+    def not_found(error):
+
+        return (
+            "CyberRecon resource not found.",
+            404,
+        )
+
+
+    @app.errorhandler(413)
+    def request_too_large(error):
+
+        return (
+            "Request exceeds CyberRecon's "
+            "allowed size limit.",
+            413,
+        )
+
+
+    @app.errorhandler(500)
+    def internal_error(error):
+
+        return (
+            "CyberRecon encountered an "
+            "internal application error.",
+            500,
+        )
+
+
+    # =====================================================
+    # TEMPLATE CONTEXT
     # =====================================================
 
     @app.context_processor
-    def inject_current_user():
+    def inject_global_template_values():
 
         return {
             "current_user_id":
@@ -158,6 +414,9 @@ def create_app():
 
             "current_username":
                 session.get("username"),
+
+            "csrf_token":
+                generate_csrf_token(),
         }
 
 
@@ -187,15 +446,12 @@ def create_app():
     def register():
 
         if session.get("user_id"):
-
             return redirect(
                 url_for("dashboard")
             )
 
-
         error = None
         success = None
-
 
         if request.method == "POST":
 
@@ -227,13 +483,11 @@ def create_app():
                 )
             )
 
-
             if not username:
 
                 error = (
                     "Username is required."
                 )
-
 
             elif not re.fullmatch(
                 r"[A-Za-z0-9_-]{3,30}",
@@ -247,7 +501,6 @@ def create_app():
                     "or hyphens."
                 )
 
-
             elif not re.fullmatch(
                 r"[^@\s]+@[^@\s]+\.[^@\s]+",
                 email,
@@ -257,14 +510,12 @@ def create_app():
                     "Enter a valid email address."
                 )
 
-
             elif len(password) < 8:
 
                 error = (
                     "Password must contain at "
                     "least 8 characters."
                 )
-
 
             elif (
                 password
@@ -275,7 +526,6 @@ def create_app():
                     "Passwords do not match."
                 )
 
-
             elif get_user_by_username(
                 username
             ):
@@ -284,7 +534,6 @@ def create_app():
                     "That username is already "
                     "registered."
                 )
-
 
             elif get_user_by_email(
                 email
@@ -295,7 +544,6 @@ def create_app():
                     "already registered."
                 )
 
-
             else:
 
                 password_hash = (
@@ -304,17 +552,25 @@ def create_app():
                     )
                 )
 
-                create_user(
-                    username,
-                    email,
-                    password_hash,
-                )
+                try:
 
-                success = (
-                    "Account created successfully. "
-                    "You can now log in."
-                )
+                    create_user(
+                        username,
+                        email,
+                        password_hash,
+                    )
 
+                    success = (
+                        "Account created successfully. "
+                        "You can now log in."
+                    )
+
+                except sqlite3.IntegrityError:
+
+                    error = (
+                        "That username or email "
+                        "is already registered."
+                    )
 
         return render_template(
             "register.html",
@@ -342,9 +598,7 @@ def create_app():
                 url_for("dashboard")
             )
 
-
         error = None
-
 
         if request.method == "POST":
 
@@ -357,18 +611,14 @@ def create_app():
                 .lower()
             )
 
-            password = (
-                request.form.get(
-                    "password",
-                    "",
-                )
+            password = request.form.get(
+                "password",
+                "",
             )
-
 
             user = get_user_by_email(
                 email
             )
-
 
             if (
                 user is None
@@ -383,19 +633,7 @@ def create_app():
                     "or password."
                 )
 
-
             else:
-
-                session.clear()
-
-                session["user_id"] = (
-                    user["id"]
-                )
-
-                session["username"] = (
-                    user["username"]
-                )
-
 
                 next_url = (
                     request.form.get(
@@ -406,24 +644,37 @@ def create_app():
                     )
                 )
 
+                # Clearing the session also invalidates
+                # the pre-login CSRF token.
+                session.clear()
 
-                if (
+                session.permanent = True
+
+                session["user_id"] = (
+                    user["id"]
+                )
+
+                session["username"] = (
+                    user["username"]
+                )
+
+                # Generate a fresh authenticated-session
+                # CSRF token.
+                generate_csrf_token()
+
+                if is_safe_local_redirect(
                     next_url
-                    and next_url.startswith("/")
-                    and not next_url.startswith("//")
                 ):
 
                     return redirect(
                         next_url
                     )
 
-
                 return redirect(
                     url_for(
                         "dashboard"
                     )
                 )
-
 
         return render_template(
             "login.html",
@@ -461,25 +712,21 @@ def create_app():
             "",
         )
 
-
         try:
 
             assessment = run_assessment(
                 target
             )
 
-
             save_assessment(
                 assessment,
                 session["user_id"],
             )
 
-
             return render_template(
                 "results.html",
                 **assessment,
             )
-
 
         except ValueError as error:
 
@@ -504,7 +751,6 @@ def create_app():
             )
         )
 
-
         return render_template(
             "dashboard.html",
             analytics=analytics,
@@ -523,7 +769,6 @@ def create_app():
             session["user_id"]
         )
 
-
         return render_template(
             "history.html",
             scans=scans,
@@ -531,7 +776,7 @@ def create_app():
 
 
     # =====================================================
-    # ARCHIVED SCAN DETAILS
+    # ARCHIVED SCAN
     # =====================================================
 
     @app.route(
@@ -547,14 +792,12 @@ def create_app():
             )
         )
 
-
         if stored_assessment is None:
 
             return (
                 "Stored assessment not found.",
                 404,
             )
-
 
         return render_template(
             "scan_detail.html",
@@ -570,7 +813,7 @@ def create_app():
 
 
     # =====================================================
-    # DOWNLOAD REPORT
+    # REPORT
     # =====================================================
 
     @app.route(
@@ -586,14 +829,12 @@ def create_app():
             )
         )
 
-
         if stored_assessment is None:
 
             return (
                 "Stored assessment not found.",
                 404,
             )
-
 
         scan_data = (
             stored_assessment[
@@ -607,7 +848,6 @@ def create_app():
             ]
         )
 
-
         severity_summary = {
             "High": 0,
             "Medium": 0,
@@ -615,7 +855,6 @@ def create_app():
             "Info": 0,
             "Total": len(findings),
         }
-
 
         for finding in findings:
 
@@ -628,7 +867,6 @@ def create_app():
                 severity_summary[
                     severity
                 ] += 1
-
 
         rendered_report = (
             render_template(
@@ -644,17 +882,14 @@ def create_app():
             )
         )
 
-
         response = make_response(
             rendered_report
         )
-
 
         filename = (
             f"CyberRecon_"
             f"{scan_id}_Report.html"
         )
-
 
         response.headers[
             "Content-Disposition"
@@ -663,13 +898,11 @@ def create_app():
             f'filename="{filename}"'
         )
 
-
         response.headers[
             "Content-Type"
         ] = (
             "text/html; charset=utf-8"
         )
-
 
         return response
 
@@ -686,17 +919,9 @@ def create_app():
             "user_id"
         ]
 
-
-        # Only this user's completed scans
-        # are available for comparison.
         scans = get_completed_scans(
             user_id
         )
-
-
-        # IMPORTANT:
-        # Define the selected scan IDs BEFORE
-        # trying to load either assessment.
 
         baseline_id = request.args.get(
             "baseline"
@@ -706,14 +931,9 @@ def create_app():
             "current"
         )
 
-
         comparison = None
-
         comparison_error = None
 
-
-        # No comparison is attempted until both
-        # dropdown values have been supplied.
         if (
             baseline_id
             and current_id
@@ -733,7 +953,6 @@ def create_app():
                 )
             )
 
-
             if (
                 baseline_assessment
                 is None
@@ -747,7 +966,6 @@ def create_app():
                     "be found."
                 )
 
-
             elif (
                 baseline_id
                 == current_id
@@ -757,7 +975,6 @@ def create_app():
                     "Please select two "
                     "different assessments."
                 )
-
 
             else:
 
@@ -770,13 +987,11 @@ def create_app():
                         )
                     )
 
-
                 except ValueError as error:
 
                     comparison_error = str(
                         error
                     )
-
 
         return render_template(
             "compare.html",
