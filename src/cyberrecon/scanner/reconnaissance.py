@@ -1,349 +1,450 @@
-import socket
 import time
+
 from html.parser import HTMLParser
-from urllib.parse import urlparse
+from urllib.parse import (
+    urljoin,
+    urlsplit,
+    urlunsplit,
+)
 
 import requests
 
+from cyberrecon.scanner.target import (
+    UnsafeTargetError,
+    normalize_target,
+    validate_network_destination,
+)
 
-class TitleParser(HTMLParser):
+
+REQUEST_TIMEOUT = (
+    4,
+    8,
+)
+
+MAX_REDIRECTS = 5
+
+REDIRECT_STATUS_CODES = {
+    301,
+    302,
+    303,
+    307,
+    308,
+}
+
+
+SELECTED_HEADERS = [
+    "Server",
+    "Content-Type",
+    "X-Powered-By",
+    "Content-Security-Policy",
+    "Content-Security-Policy-Report-Only",
+    "Strict-Transport-Security",
+    "X-Frame-Options",
+    "X-Content-Type-Options",
+    "Referrer-Policy",
+    "Permissions-Policy",
+    "Cross-Origin-Opener-Policy",
+    "Cross-Origin-Resource-Policy",
+    "Cross-Origin-Embedder-Policy",
+    "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Credentials",
+    "Cache-Control",
+    "Pragma",
+    "Set-Cookie",
+]
+
+
+class PageTitleParser(
+    HTMLParser
+):
     """
-    Extract the HTML page title.
+    Small HTML parser used only to extract
+    the first page title.
     """
 
     def __init__(self):
+
         super().__init__()
 
-        self.inside_title = False
-        self.title = ""
+        self.in_title = False
 
-    def handle_starttag(self, tag, attrs):
+        self.title_parts = []
+
+
+    def handle_starttag(
+        self,
+        tag,
+        attrs,
+    ):
 
         if tag.lower() == "title":
-            self.inside_title = True
 
-    def handle_endtag(self, tag):
+            self.in_title = True
+
+
+    def handle_endtag(
+        self,
+        tag,
+    ):
 
         if tag.lower() == "title":
-            self.inside_title = False
 
-    def handle_data(self, data):
-
-        if self.inside_title:
-            self.title += data
+            self.in_title = False
 
 
-def get_page_title(html):
-    """
-    Extract a page title from HTML content.
-    """
+    def handle_data(
+        self,
+        data,
+    ):
 
-    parser = TitleParser()
+        if self.in_title:
 
-    try:
-
-        # Limit the amount of HTML processed.
-        parser.feed(html[:200000])
-
-        title = parser.title.strip()
-
-        return title if title else "Not detected"
-
-    except Exception:
-        return "Not detected"
+            self.title_parts.append(
+                data
+            )
 
 
-def resolve_ip(hostname):
-    """
-    Resolve a hostname to an IP address.
-    """
+    def get_title(self):
 
-    try:
-
-        addresses = socket.getaddrinfo(
-            hostname,
-            None,
-            type=socket.SOCK_STREAM,
+        title = " ".join(
+            self.title_parts
         )
 
-        # Prefer IPv4 for display when available.
-        for address in addresses:
+        title = " ".join(
+            title.split()
+        )
 
-            if address[0] == socket.AF_INET:
-                return address[4][0]
-
-        if addresses:
-            return addresses[0][4][0]
-
-    except socket.gaierror:
-        pass
-
-    return None
+        return (
+            title
+            if title
+            else "Not available"
+        )
 
 
-def failure_result(
-    target,
-    hostname,
-    ip_address,
-    error_type,
-    message,
+def extract_page_title(
+    response,
 ):
     """
-    Return a consistent reconnaissance failure result.
+    Extract a page title only for HTML responses.
+
+    Parsing is intentionally limited so a very large
+    remote page is not unnecessarily processed.
     """
 
-    return {
-        "target": target,
-        "domain": hostname,
-
-        "ip_address": (
-            ip_address
-            if ip_address
-            else "Unable to resolve"
-        ),
-
-        "reachable": False,
-        "status_code": "Unavailable",
-        "final_url": target,
-
-        "https_enabled": (
-            urlparse(target).scheme == "https"
-        ),
-
-        "response_time": "Unavailable",
-        "page_title": "Unavailable",
-        "server": "Unavailable",
-        "content_type": "Unavailable",
-
-        "redirect_count": 0,
-
-        "headers": {},
-
-        # Used later for cookie-security checks.
-        "set_cookies": [],
-
-        "fallback_used": False,
-
-        "error_type": error_type,
-        "error_message": message,
-
-        # Kept for compatibility with existing templates.
-        "error": message,
-    }
-
-
-def perform_request(target):
-    """
-    Send an HTTP request using a controlled
-    requests session.
-    """
-
-    session = requests.Session()
-
-    # Prevent excessive redirect loops.
-    session.max_redirects = 5
-
-    headers = {
-        "User-Agent": (
-            "CyberRecon/0.8 "
-            "Web Security Assessment Platform"
+    content_type = (
+        response.headers.get(
+            "Content-Type",
+            "",
         )
-    }
-
-    return session.get(
-        target,
-        headers=headers,
-        timeout=(4, 8),
-        allow_redirects=True,
+        .lower()
     )
 
 
-def get_set_cookie_headers(response):
-    """
-    Return individual Set-Cookie headers when
-    available.
+    if "html" not in content_type:
 
-    Keeping cookies separately is important because
-    multiple Set-Cookie headers may exist in one
-    response.
-    """
+        return "Not available"
+
 
     try:
 
-        raw_headers = response.raw.headers
+        parser = PageTitleParser()
 
-        if hasattr(raw_headers, "getlist"):
+        parser.feed(
+            response.text[
+                :200000
+            ]
+        )
 
-            cookies = raw_headers.getlist(
-                "Set-Cookie"
-            )
+        return parser.get_title()
 
-            if cookies:
-                return cookies
-
-        if hasattr(raw_headers, "get_all"):
-
-            cookies = raw_headers.get_all(
-                "Set-Cookie"
-            )
-
-            if cookies:
-                return cookies
 
     except Exception:
-        pass
+
+        return "Not available"
 
 
-    cookie_header = response.headers.get(
+def collect_selected_headers(
+    response,
+):
+    """
+    Return the HTTP response headers used by the
+    CyberRecon passive security engine.
+    """
+
+    headers = {}
+
+
+    for header_name in (
+        SELECTED_HEADERS
+    ):
+
+        value = response.headers.get(
+            header_name
+        )
+
+
+        headers[
+            header_name
+        ] = (
+            value
+            if value
+            else "Not present"
+        )
+
+
+    return headers
+
+
+def get_set_cookie_headers(
+    response,
+):
+    """
+    Retrieve Set-Cookie header lines while preserving
+    separate cookies where the HTTP library allows it.
+    """
+
+    raw_headers = getattr(
+        response.raw,
+        "headers",
+        None,
+    )
+
+
+    if raw_headers is not None:
+
+        getlist = getattr(
+            raw_headers,
+            "getlist",
+            None,
+        )
+
+
+        if callable(getlist):
+
+            values = getlist(
+                "Set-Cookie"
+            )
+
+            if values:
+
+                return list(
+                    values
+                )
+
+
+        get_all = getattr(
+            raw_headers,
+            "get_all",
+            None,
+        )
+
+
+        if callable(get_all):
+
+            values = get_all(
+                "Set-Cookie"
+            )
+
+            if values:
+
+                return list(
+                    values
+                )
+
+
+    combined = response.headers.get(
         "Set-Cookie"
     )
 
-    if cookie_header:
-        return [cookie_header]
+
+    if combined:
+
+        return [
+            combined
+        ]
+
 
     return []
 
 
-def collect_selected_headers(response):
-    """
-    Collect response headers used by CyberRecon's
-    passive security-analysis rules.
-    """
-
-    selected_header_names = [
-        "Server",
-        "Content-Type",
-        "X-Powered-By",
-
-        "Content-Security-Policy",
-        "Content-Security-Policy-Report-Only",
-
-        "Strict-Transport-Security",
-
-        "X-Frame-Options",
-        "X-Content-Type-Options",
-
-        "Referrer-Policy",
-        "Permissions-Policy",
-
-        "Cross-Origin-Opener-Policy",
-        "Cross-Origin-Resource-Policy",
-        "Cross-Origin-Embedder-Policy",
-
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Credentials",
-
-        "Cache-Control",
-        "Pragma",
-
-        "Set-Cookie",
-    ]
-
-
-    selected_headers = {}
-
-
-    for header_name in selected_header_names:
-
-        selected_headers[
-            header_name
-        ] = response.headers.get(
-            header_name,
-            "Not present",
-        )
-
-
-    return selected_headers
-
-
-def run_reconnaissance(
-    target,
-    allow_http_fallback=False,
+def build_http_fallback_url(
+    target_url,
 ):
     """
-    Perform passive reconnaissance against an
-    authorized web target.
+    Convert HTTPS to HTTP while preserving the rest
+    of the URL.
     """
 
-    parsed_target = urlparse(target)
-
-    hostname = parsed_target.hostname
-
-    ip_address = resolve_ip(hostname)
+    parsed = urlsplit(
+        target_url
+    )
 
 
-    # Stop early when DNS resolution fails.
-    if not ip_address:
+    return urlunsplit(
+        (
+            "http",
+            parsed.netloc,
+            parsed.path,
+            parsed.query,
+            "",
+        )
+    )
 
-        return failure_result(
-            target,
-            hostname,
-            None,
-            "DNS Resolution Failed",
-            (
-                "CyberRecon could not resolve "
-                "the target hostname."
-            ),
+
+def perform_request(
+    target_url,
+):
+    """
+    Perform a request chain manually.
+
+    Automatic redirects are intentionally disabled.
+
+    Before every network request CyberRecon:
+    1. resolves the destination
+    2. applies the SSRF destination policy
+    3. sends one request
+    4. inspects any Location header
+    5. validates the redirect destination before
+       following it
+
+    This prevents a public URL from simply redirecting
+    CyberRecon to a blocked private/internal address.
+    """
+
+    session = requests.Session()
+
+
+    session.headers.update(
+        {
+            "User-Agent":
+                (
+                    "CyberRecon/0.10 "
+                    "Web Security Assessment Platform"
+                )
+        }
+    )
+
+
+    current_url = normalize_target(
+        target_url
+    )
+
+
+    redirect_count = 0
+
+    visited_urls = set()
+
+    start_time = (
+        time.perf_counter()
+    )
+
+
+    while True:
+
+        # -------------------------------------------------
+        # REDIRECT LOOP PROTECTION
+        # -------------------------------------------------
+
+        if current_url in visited_urls:
+
+            raise requests.exceptions.TooManyRedirects(
+                "Redirect loop detected."
+            )
+
+
+        visited_urls.add(
+            current_url
         )
 
 
-    fallback_used = False
+        # -------------------------------------------------
+        # SSRF DESTINATION VALIDATION
+        # -------------------------------------------------
 
-    request_target = target
-
-    start_time = time.perf_counter()
-
-
-    try:
-
-        try:
-
-            response = perform_request(
-                request_target
+        resolved_addresses = (
+            validate_network_destination(
+                current_url
             )
+        )
 
-        except (
-            requests.exceptions.SSLError,
-            requests.exceptions.ConnectionError,
-        ) as first_error:
 
-            # When the user entered only a hostname,
-            # CyberRecon initially tries HTTPS.
-            #
-            # HTTP fallback is allowed only when the
-            # original input did not explicitly request
-            # HTTPS.
+        # -------------------------------------------------
+        # SINGLE HTTP REQUEST
+        # -------------------------------------------------
+
+        response = session.get(
+            current_url,
+
+            timeout=REQUEST_TIMEOUT,
+
+            allow_redirects=False,
+        )
+
+
+        # -------------------------------------------------
+        # MANUAL REDIRECT PROCESSING
+        # -------------------------------------------------
+
+        if (
+            response.status_code
+            in REDIRECT_STATUS_CODES
+            and response.headers.get(
+                "Location"
+            )
+        ):
 
             if (
-                allow_http_fallback
-                and request_target.startswith(
-                    "https://"
-                )
+                redirect_count
+                >= MAX_REDIRECTS
             ):
 
-                request_target = (
-                    "http://"
-                    + request_target[
-                        len("https://"):
-                    ]
+                raise (
+                    requests
+                    .exceptions
+                    .TooManyRedirects(
+                        "Maximum redirect "
+                        "limit exceeded."
+                    )
                 )
 
-                response = perform_request(
-                    request_target
-                )
 
-                fallback_used = True
-
-            else:
-                raise first_error
+            location = (
+                response.headers[
+                    "Location"
+                ]
+            )
 
 
-        end_time = time.perf_counter()
+            next_url = urljoin(
+                current_url,
+                location,
+            )
 
 
-        response_time = round(
+            next_url = normalize_target(
+                next_url
+            )
+
+
+            # Critical SSRF control:
+            #
+            # Validate the redirect destination before
+            # any request is sent to it.
+            validate_network_destination(
+                next_url
+            )
+
+
+            redirect_count += 1
+
+            current_url = next_url
+
+            continue
+
+
+        elapsed_ms = round(
             (
-                end_time
+                time.perf_counter()
                 - start_time
             )
             * 1000,
@@ -351,159 +452,528 @@ def run_reconnaissance(
         )
 
 
-        final_url = response.url
-
-
-        final_scheme = urlparse(
-            final_url
-        ).scheme.lower()
-
-
-        response_text = response.text
-
-
-        selected_headers = (
-            collect_selected_headers(
-                response
-            )
-        )
-
-
-        set_cookies = (
-            get_set_cookie_headers(
-                response
-            )
-        )
-
-
         return {
-            "target": target,
+            "response":
+                response,
 
-            "domain": hostname,
-
-            "ip_address": ip_address,
-
-            "reachable": True,
-
-            "status_code":
-                response.status_code,
-
-            "final_url":
-                final_url,
-
-            "https_enabled": (
-                final_scheme == "https"
-            ),
-
-            "response_time":
-                response_time,
-
-            "page_title":
-                get_page_title(
-                    response_text
-                ),
-
-            "server":
-                response.headers.get(
-                    "Server",
-                    "Not disclosed",
-                ),
-
-            "content_type":
-                response.headers.get(
-                    "Content-Type",
-                    "Not disclosed",
-                ),
+            "elapsed_ms":
+                elapsed_ms,
 
             "redirect_count":
-                len(
-                    response.history
-                ),
+                redirect_count,
 
-            "fallback_used":
-                fallback_used,
+            "final_url":
+                current_url,
 
-            "error_type":
-                None,
-
-            "error_message":
-                None,
-
-            "headers":
-                selected_headers,
-
-            # Kept separately so later security rules
-            # can safely inspect individual cookies.
-            "set_cookies":
-                set_cookies,
+            "resolved_addresses":
+                resolved_addresses,
         }
 
 
+def build_success_result(
+    target_url,
+    request_result,
+    fallback_used,
+):
+    """
+    Convert a successful request into the standard
+    CyberRecon reconnaissance dictionary.
+    """
+
+    response = request_result[
+        "response"
+    ]
+
+
+    final_url = request_result[
+        "final_url"
+    ]
+
+
+    resolved_addresses = (
+        request_result[
+            "resolved_addresses"
+        ]
+    )
+
+
+    parsed_final_url = urlsplit(
+        final_url
+    )
+
+
+    selected_headers = (
+        collect_selected_headers(
+            response
+        )
+    )
+
+
+    server = response.headers.get(
+        "Server"
+    )
+
+
+    content_type = (
+        response.headers.get(
+            "Content-Type"
+        )
+    )
+
+
+    return {
+        "target":
+            target_url,
+
+        "domain":
+            (
+                parsed_final_url.hostname
+                or "Unavailable"
+            ),
+
+        "ip_address":
+            (
+                resolved_addresses[0]
+                if resolved_addresses
+                else "Unavailable"
+            ),
+
+        "reachable":
+            True,
+
+        "status_code":
+            response.status_code,
+
+        "final_url":
+            final_url,
+
+        "https_enabled":
+            (
+                parsed_final_url.scheme
+                .lower()
+                == "https"
+            ),
+
+        "response_time":
+            request_result[
+                "elapsed_ms"
+            ],
+
+        "page_title":
+            extract_page_title(
+                response
+            ),
+
+        "server":
+            (
+                server
+                if server
+                else "Not disclosed"
+            ),
+
+        "content_type":
+            (
+                content_type
+                if content_type
+                else "Not disclosed"
+            ),
+
+        "redirect_count":
+            request_result[
+                "redirect_count"
+            ],
+
+        "headers":
+            selected_headers,
+
+        "set_cookies":
+            get_set_cookie_headers(
+                response
+            ),
+
+        "fallback_used":
+            fallback_used,
+
+        "error_type":
+            None,
+
+        "error_message":
+            None,
+    }
+
+
+def build_failure_result(
+    target_url,
+    error_type,
+    error_message,
+    fallback_used=False,
+):
+    """
+    Produce a consistent reconnaissance failure result.
+    """
+
+    try:
+
+        parsed = urlsplit(
+            target_url
+        )
+
+        domain = (
+            parsed.hostname
+            or "Unavailable"
+        )
+
+    except Exception:
+
+        domain = "Unavailable"
+
+
+    return {
+        "target":
+            target_url,
+
+        "domain":
+            domain,
+
+        "ip_address":
+            "Unavailable",
+
+        "reachable":
+            False,
+
+        "status_code":
+            "Unavailable",
+
+        "final_url":
+            target_url,
+
+        "https_enabled":
+            False,
+
+        "response_time":
+            "Unavailable",
+
+        "page_title":
+            "Unavailable",
+
+        "server":
+            "Unavailable",
+
+        "content_type":
+            "Unavailable",
+
+        "redirect_count":
+            0,
+
+        "headers":
+            {},
+
+        "set_cookies":
+            [],
+
+        "fallback_used":
+            fallback_used,
+
+        "error_type":
+            error_type,
+
+        "error_message":
+            error_message,
+    }
+
+
+def perform_reconnaissance(
+    target_url,
+    allow_http_fallback=False,
+):
+    """
+    Run CyberRecon passive web reconnaissance.
+
+    Scheme-less targets are normally normalized to HTTPS
+    by the target module. The assessment controller may
+    permit one HTTP fallback when the user did not
+    explicitly specify a scheme.
+
+    An explicitly supplied HTTPS URL is never silently
+    downgraded to HTTP.
+    """
+
+    try:
+
+        result = perform_request(
+            target_url
+        )
+
+
+        return build_success_result(
+            target_url,
+            result,
+            fallback_used=False,
+        )
+
+
+    # =====================================================
+    # SSRF BLOCK
+    # =====================================================
+
+    except UnsafeTargetError as error:
+
+        return build_failure_result(
+            target_url,
+
+            "Blocked Target",
+
+            str(error),
+        )
+
+
+    # =====================================================
+    # DNS FAILURE
+    # =====================================================
+
+    except OSError as error:
+
+        # socket.gaierror derives from OSError.
+        #
+        # requests network errors are handled below,
+        # therefore this primarily catches destination
+        # resolution failures from the validation layer.
+
+        if (
+            error.__class__.__name__
+            == "gaierror"
+        ):
+
+            return build_failure_result(
+                target_url,
+
+                "DNS Resolution Error",
+
+                (
+                    "CyberRecon could not resolve "
+                    "the target hostname."
+                ),
+            )
+
+
+        return build_failure_result(
+            target_url,
+
+            "Network Error",
+
+            str(error),
+        )
+
+
+    # =====================================================
+    # TLS / SSL FAILURE
+    # =====================================================
+
+    except requests.exceptions.SSLError as error:
+
+        if allow_http_fallback:
+
+            fallback_url = (
+                build_http_fallback_url(
+                    target_url
+                )
+            )
+
+
+            try:
+
+                result = perform_request(
+                    fallback_url
+                )
+
+
+                return build_success_result(
+                    fallback_url,
+                    result,
+                    fallback_used=True,
+                )
+
+
+            except UnsafeTargetError as fallback_error:
+
+                return build_failure_result(
+                    fallback_url,
+
+                    "Blocked Target",
+
+                    str(
+                        fallback_error
+                    ),
+
+                    fallback_used=True,
+                )
+
+
+            except Exception as fallback_error:
+
+                return build_failure_result(
+                    fallback_url,
+
+                    "Connection Error",
+
+                    str(
+                        fallback_error
+                    ),
+
+                    fallback_used=True,
+                )
+
+
+        return build_failure_result(
+            target_url,
+
+            "TLS/SSL Error",
+
+            str(error),
+        )
+
+
+    # =====================================================
+    # TIMEOUT
+    # =====================================================
+
     except requests.exceptions.Timeout:
 
-        return failure_result(
-            target,
-            hostname,
-            ip_address,
-            "Connection Timeout",
+        return build_failure_result(
+            target_url,
+
+            "Timeout",
+
             (
-                "The target did not respond within "
-                "the configured timeout period."
+                "The target did not respond "
+                "within the configured timeout."
             ),
         )
 
 
-    except requests.exceptions.SSLError:
+    # =====================================================
+    # TOO MANY REDIRECTS / REDIRECT LOOP
+    # =====================================================
 
-        return failure_result(
-            target,
-            hostname,
-            ip_address,
-            "TLS/SSL Error",
-            (
-                "CyberRecon could not establish "
-                "a valid TLS/SSL connection."
-            ),
-        )
+    except (
+        requests
+        .exceptions
+        .TooManyRedirects
+    ) as error:
 
+        return build_failure_result(
+            target_url,
 
-    except requests.exceptions.TooManyRedirects:
-
-        return failure_result(
-            target,
-            hostname,
-            ip_address,
             "Too Many Redirects",
-            (
-                "The target exceeded CyberRecon's "
-                "redirect limit."
-            ),
+
+            str(error),
         )
 
 
-    except requests.exceptions.ConnectionError:
+    # =====================================================
+    # CONNECTION FAILURE
+    # =====================================================
 
-        return failure_result(
-            target,
-            hostname,
-            ip_address,
-            "Connection Failed",
-            (
-                "CyberRecon could not establish "
-                "a connection to the target."
-            ),
+    except requests.exceptions.ConnectionError as error:
+
+        if allow_http_fallback:
+
+            fallback_url = (
+                build_http_fallback_url(
+                    target_url
+                )
+            )
+
+
+            try:
+
+                result = perform_request(
+                    fallback_url
+                )
+
+
+                return build_success_result(
+                    fallback_url,
+                    result,
+                    fallback_used=True,
+                )
+
+
+            except UnsafeTargetError as fallback_error:
+
+                return build_failure_result(
+                    fallback_url,
+
+                    "Blocked Target",
+
+                    str(
+                        fallback_error
+                    ),
+
+                    fallback_used=True,
+                )
+
+
+            except Exception as fallback_error:
+
+                return build_failure_result(
+                    fallback_url,
+
+                    "Connection Error",
+
+                    str(
+                        fallback_error
+                    ),
+
+                    fallback_used=True,
+                )
+
+
+        return build_failure_result(
+            target_url,
+
+            "Connection Error",
+
+            str(error),
         )
 
 
-    except requests.exceptions.RequestException:
+    # =====================================================
+    # INVALID REDIRECT / URL
+    # =====================================================
 
-        return failure_result(
-            target,
-            hostname,
-            ip_address,
-            "HTTP Request Failed",
-            (
-                "An error occurred while requesting "
-                "the target."
-            ),
+    except ValueError as error:
+
+        return build_failure_result(
+            target_url,
+
+            "Redirect Validation Error",
+
+            str(error),
+        )
+
+
+    # =====================================================
+    # GENERIC REQUEST FAILURE
+    # =====================================================
+
+    except requests.exceptions.RequestException as error:
+
+        return build_failure_result(
+            target_url,
+
+            "Request Error",
+
+            str(error),
+        )
+
+
+    except Exception as error:
+
+        return build_failure_result(
+            target_url,
+
+            "Unexpected Reconnaissance Error",
+
+            str(error),
         )

@@ -1,14 +1,11 @@
 import time
-import uuid
+
 from datetime import datetime
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from cyberrecon.scanner.target import (
-    normalize_target,
-)
-
 from cyberrecon.scanner.reconnaissance import (
-    run_reconnaissance,
+    perform_reconnaissance,
 )
 
 from cyberrecon.scanner.security_analysis import (
@@ -17,102 +14,196 @@ from cyberrecon.scanner.security_analysis import (
     summarize_findings,
 )
 
+from cyberrecon.scanner.target import (
+    has_explicit_scheme,
+    normalize_target,
+)
+
+
+INDIA_TIMEZONE = ZoneInfo(
+    "Asia/Kolkata"
+)
+
+
 def generate_scan_id():
     """
-    Generate a short unique CyberRecon scan ID.
+    Generate a short human-readable CyberRecon scan ID.
     """
 
-    unique_part = uuid.uuid4().hex[:8].upper()
+    return (
+        "CR-"
+        + uuid4()
+        .hex[:8]
+        .upper()
+    )
 
-    return f"CR-{unique_part}"
 
-
-def run_assessment(raw_target):
+def current_ist_timestamp():
     """
-    Execute the CyberRecon assessment pipeline.
+    Return the current timestamp in Indian Standard Time.
     """
 
-    assessment_start = time.perf_counter()
-
-    started_at = datetime.now(
-        ZoneInfo("Asia/Kolkata")
+    current_time = datetime.now(
+        INDIA_TIMEZONE
     )
 
-    scan_id = generate_scan_id()
-
-    # Detect whether the user supplied the protocol.
-    explicit_scheme = raw_target.strip().lower().startswith(
-        ("http://", "https://")
+    return current_time.strftime(
+        "%d %b %Y, %I:%M:%S %p IST"
     )
 
-    normalized_target = normalize_target(
-        raw_target
+
+def run_assessment(
+    raw_target,
+):
+    """
+    Execute the complete CyberRecon assessment pipeline.
+
+    Stages:
+    1. validate and normalize target
+    2. passive reconnaissance
+    3. security analysis
+    4. summarize findings
+    5. return structured metadata
+    """
+
+    started_at = (
+        current_ist_timestamp()
     )
 
-    reconnaissance = run_reconnaissance(
-        normalized_target,
-        allow_http_fallback=not explicit_scheme,
+
+    scan_id = (
+        generate_scan_id()
     )
 
-    if reconnaissance.get("reachable"):
 
-        findings = analyze_security(
-            reconnaissance
+    timer_start = (
+        time.perf_counter()
+    )
+
+
+    explicit_scheme = (
+        has_explicit_scheme(
+            raw_target
+        )
+    )
+
+
+    normalized_target = (
+        normalize_target(
+            raw_target
+        )
+    )
+
+
+    reconnaissance = (
+        perform_reconnaissance(
+            normalized_target,
+
+            allow_http_fallback=(
+                not explicit_scheme
+            ),
+        )
+    )
+
+
+    if reconnaissance[
+        "reachable"
+    ]:
+
+        findings = (
+            analyze_security(
+                reconnaissance
+            )
         )
 
-        checks_performed = SECURITY_CHECK_COUNT
 
-        analysis_status = "Completed"
+        finding_summary = (
+            summarize_findings(
+                findings
+            )
+        )
+
+
+        recon_status = (
+            "Completed"
+        )
+
+
+        analysis_status = (
+            "Completed"
+        )
+
+
+        checks_performed = (
+            SECURITY_CHECK_COUNT
+        )
+
 
     else:
 
         findings = []
 
-        checks_performed = 0
+
+        finding_summary = {
+            "High": 0,
+            "Medium": 0,
+            "Low": 0,
+            "Info": 0,
+            "Total": 0,
+        }
+
+
+        recon_status = "Failed"
 
         analysis_status = "Skipped"
 
-    finding_summary = summarize_findings(
-        findings
-    )
+        checks_performed = 0
 
-    assessment_end = time.perf_counter()
 
     duration_ms = round(
         (
-            assessment_end
-            - assessment_start
+            time.perf_counter()
+            - timer_start
         )
         * 1000,
         2,
     )
 
+
     metadata = {
-        "scan_id": scan_id,
+        "scan_id":
+            scan_id,
 
-        "started_at": started_at.strftime(
-            "%d %b %Y, %I:%M:%S %p %Z"
-        ),
+        "started_at":
+            started_at,
 
-        "duration_ms": duration_ms,
+        "duration_ms":
+            duration_ms,
 
         "checks_performed":
             checks_performed,
 
-        "recon_status": (
-            "Completed"
-            if reconnaissance.get("reachable")
-            else "Failed"
-        ),
+        "recon_status":
+            recon_status,
 
         "analysis_status":
             analysis_status,
     }
 
+
     return {
-        "target": normalized_target,
-        "recon": reconnaissance,
-        "findings": findings,
-        "finding_summary": finding_summary,
-        "metadata": metadata,
+        "target":
+            normalized_target,
+
+        "recon":
+            reconnaissance,
+
+        "findings":
+            findings,
+
+        "finding_summary":
+            finding_summary,
+
+        "metadata":
+            metadata,
     }
