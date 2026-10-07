@@ -12,13 +12,10 @@ from cyberrecon.scanner.reconnaissance import (
 )
 
 from cyberrecon.scanner.security_analysis import (
+    SECURITY_CHECK_COUNT,
     analyze_security,
     summarize_findings,
 )
-
-
-SECURITY_CHECK_COUNT = 7
-
 
 def generate_scan_id():
     """

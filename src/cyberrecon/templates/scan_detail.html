@@ -19,16 +19,247 @@
         href="{{ url_for('static', filename='css/style.css') }}"
     >
 
+    <style>
+
+        .finding-metadata {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(0, 1fr)
+                );
+
+            gap: 10px;
+
+            margin-top: 18px;
+            margin-bottom: 18px;
+        }
+
+
+        .finding-meta-item {
+            padding: 11px 12px;
+
+            border: 1px solid #1e344b;
+
+            border-radius: 7px;
+
+            background:
+                rgba(
+                    8,
+                    17,
+                    28,
+                    0.65
+                );
+        }
+
+
+        .finding-meta-item span {
+            display: block;
+
+            color: #64788e;
+
+            font-size: 8px;
+
+            font-weight: 600;
+
+            letter-spacing: 0.9px;
+        }
+
+
+        .finding-meta-item strong {
+            display: block;
+
+            margin-top: 5px;
+
+            color: #bfcedd;
+
+            font-size: 11px;
+
+            line-height: 1.4;
+
+            word-break: break-word;
+        }
+
+
+        .finding-meta-wide {
+            grid-column: span 2;
+        }
+
+
+        .meta-high {
+            color: #ff6673 !important;
+        }
+
+
+        .meta-medium {
+            color: #f0a14a !important;
+        }
+
+
+        .meta-low {
+            color: #e5c556 !important;
+        }
+
+
+        .meta-info {
+            color: #65aee8 !important;
+        }
+
+
+        .archive-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    3,
+                    minmax(0, 1fr)
+                );
+
+            gap: 12px;
+        }
+
+
+        .archive-card {
+            padding: 18px;
+
+            border: 1px solid #1c3149;
+
+            border-radius: 9px;
+
+            background:
+                rgba(
+                    10,
+                    18,
+                    30,
+                    0.82
+                );
+        }
+
+
+        .archive-card span {
+            display: block;
+
+            color: #677b91;
+
+            font-size: 8px;
+
+            font-weight: 600;
+
+            letter-spacing: 0.9px;
+        }
+
+
+        .archive-card strong {
+            display: block;
+
+            margin-top: 7px;
+
+            color: #c6d2df;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+            word-break: break-word;
+        }
+
+
+        .finding-copy {
+            padding: 18px 20px;
+        }
+
+
+        .finding-copy div {
+            margin-top: 16px;
+        }
+
+
+        .finding-copy span {
+            display: block;
+
+            margin-bottom: 6px;
+
+            color: #63778d;
+
+            font-size: 9px;
+
+            font-weight: 600;
+
+            letter-spacing: 0.8px;
+        }
+
+
+        .finding-copy p {
+            margin: 0;
+
+            color: #aebdca;
+
+            line-height: 1.7;
+        }
+
+
+        .detail-actions {
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            margin-top: 34px;
+        }
+
+
+        @media (max-width: 850px) {
+
+            .finding-metadata {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+            }
+
+
+            .archive-grid {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+            }
+
+        }
+
+
+        @media (max-width: 520px) {
+
+            .finding-metadata,
+            .archive-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .finding-meta-wide {
+                grid-column: span 1;
+            }
+
+        }
+
+    </style>
+
 </head>
 
 
 <body>
+
 
 <nav class="navbar">
 
     <div class="brand">
         Cyber<span>Recon</span>
     </div>
+
 
     <div class="nav-actions">
 
@@ -37,6 +268,13 @@
             class="nav-link"
         >
             New Assessment
+        </a>
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="nav-link"
+        >
+            Dashboard
         </a>
 
         <a
@@ -53,39 +291,25 @@
             Compare
         </a>
 
+
         {% if current_user_id %}
 
-            <span class="nav-user">
-                {{ current_username }}
-            </span>
+        <span class="nav-user">
+            {{ current_username }}
+        </span>
 
-            <a
-                href="{{ url_for('logout') }}"
-                class="nav-link"
-            >
-                Logout
-            </a>
-
-        {% else %}
-
-            <a
-                href="{{ url_for('login') }}"
-                class="nav-link"
-            >
-                Login
-            </a>
-
-            <a
-                href="{{ url_for('register') }}"
-                class="nav-link"
-            >
-                Register
-            </a>
+        <a
+            href="{{ url_for('logout') }}"
+            class="nav-link"
+        >
+            Logout
+        </a>
 
         {% endif %}
 
+
         <div class="nav-status">
-            ANALYTICS DASHBOARD
+            ARCHIVED ASSESSMENT
         </div>
 
     </div>
@@ -93,34 +317,55 @@
 </nav>
 
 
+
 <main class="container">
 
-<section class="history-section">
+
+<section class="dashboard-section">
+
 
     <div class="tag">
-        ARCHIVED ASSESSMENT
+        STORED ASSESSMENT
     </div>
 
 
     <h1>
         Scan
-        <span>Details.</span>
+        <span>{{ scan.scan_id }}</span>
     </h1>
 
 
     <p class="subtitle">
 
-        Stored CyberRecon assessment
-        {{ scan.scan_id }}.
+        Archived CyberRecon assessment for
+        {{ scan.target }}.
 
     </p>
 
 
-    <div class="scan-detail-grid">
 
-        <div class="summary-card">
+    <!-- ==================================================
+         ASSESSMENT SUMMARY
+         ================================================== -->
 
-            <span class="summary-label">
+    <div class="section-heading">
+
+        <h2>
+            Assessment Summary
+        </h2>
+
+        <p>
+            Stored scan execution details.
+        </p>
+
+    </div>
+
+
+    <div class="archive-grid">
+
+        <div class="archive-card">
+
+            <span>
                 SCAN ID
             </span>
 
@@ -131,35 +376,35 @@
         </div>
 
 
-        <div class="summary-card">
+        <div class="archive-card">
 
-            <span class="summary-label">
-                STATUS
+            <span>
+                TARGET
             </span>
 
             <strong>
-                {{ scan.recon_status }}
+                {{ scan.target }}
             </strong>
 
         </div>
 
 
-        <div class="summary-card">
+        <div class="archive-card">
 
-            <span class="summary-label">
-                CHECKS
+            <span>
+                STARTED
             </span>
 
             <strong>
-                {{ scan.checks_performed }}
+                {{ scan.started_at }}
             </strong>
 
         </div>
 
 
-        <div class="summary-card">
+        <div class="archive-card">
 
-            <span class="summary-label">
+            <span>
                 DURATION
             </span>
 
@@ -169,155 +414,221 @@
 
         </div>
 
+
+        <div class="archive-card">
+
+            <span>
+                RECONNAISSANCE
+            </span>
+
+            <strong>
+                {{ scan.recon_status }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                SECURITY ANALYSIS
+            </span>
+
+            <strong>
+                {{ scan.analysis_status }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                CHECKS PERFORMED
+            </span>
+
+            <strong>
+                {{ scan.checks_performed }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                HTTP STATUS
+            </span>
+
+            <strong>
+                {{ scan.http_status or "Unavailable" }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                HTTPS
+            </span>
+
+            <strong>
+
+                {% if scan.https_enabled %}
+                    Enabled
+                {% else %}
+                    Not Enabled
+                {% endif %}
+
+            </strong>
+
+        </div>
+
     </div>
 
+
+
+    <!-- ==================================================
+         TARGET INFORMATION
+         ================================================== -->
 
     <div class="section-heading">
 
         <h2>
-            Assessment Information
+            Target Information
         </h2>
 
         <p>
-            Metadata stored for this assessment.
+            Reconnaissance information stored for
+            this assessment.
         </p>
 
     </div>
 
 
-    <div class="result-panel">
+    <div class="archive-grid">
 
-        <div class="result-row">
-
-            <span class="result-title">
-                Target
-            </span>
+        <div class="archive-card">
 
             <span>
-                {{ scan.target }}
+                DOMAIN
             </span>
 
-        </div>
-
-
-        <div class="result-row">
-
-            <span class="result-title">
-                Started
-            </span>
-
-            <span>
-                {{ scan.started_at }}
-            </span>
-
-        </div>
-
-
-        <div class="result-row">
-
-            <span class="result-title">
-                Reconnaissance
-            </span>
-
-            <span>
-                {{ scan.recon_status }}
-            </span>
-
-        </div>
-
-
-        <div class="result-row">
-
-            <span class="result-title">
-                Security Analysis
-            </span>
-
-            <span>
-                {{ scan.analysis_status }}
-            </span>
-
-        </div>
-
-
-        <div class="result-row">
-
-            <span class="result-title">
-                Domain
-            </span>
-
-            <span>
+            <strong>
                 {{ scan.domain or "Unavailable" }}
-            </span>
+            </strong>
 
         </div>
 
 
-        <div class="result-row">
-
-            <span class="result-title">
-                IP Address
-            </span>
+        <div class="archive-card">
 
             <span>
+                IP ADDRESS
+            </span>
+
+            <strong>
                 {{ scan.ip_address or "Unavailable" }}
-            </span>
+            </strong>
 
         </div>
 
 
-        <div class="result-row">
-
-            <span class="result-title">
-                Final URL
-            </span>
+        <div class="archive-card">
 
             <span>
+                FINAL URL
+            </span>
+
+            <strong>
                 {{ scan.final_url or "Unavailable" }}
-            </span>
+            </strong>
 
         </div>
 
 
-        <div class="result-row">
-
-            <span class="result-title">
-                HTTP Status
-            </span>
+        <div class="archive-card">
 
             <span>
-                {{ scan.http_status }}
+                RESPONSE TIME
             </span>
+
+            <strong>
+
+                {% if scan.response_time is not none %}
+
+                    {{ scan.response_time }} ms
+
+                {% else %}
+
+                    Unavailable
+
+                {% endif %}
+
+            </strong>
 
         </div>
 
 
-        <div class="result-row">
-
-            <span class="result-title">
-                Page Title
-            </span>
+        <div class="archive-card">
 
             <span>
+                REDIRECT COUNT
+            </span>
+
+            <strong>
+                {{ scan.redirect_count or 0 }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                PAGE TITLE
+            </span>
+
+            <strong>
                 {{ scan.page_title or "Unavailable" }}
-            </span>
+            </strong>
 
         </div>
 
 
-        <div class="result-row">
-
-            <span class="result-title">
-                Web Server
-            </span>
+        <div class="archive-card">
 
             <span>
-                {{ scan.server or "Unavailable" }}
+                WEB SERVER
             </span>
+
+            <strong>
+                {{ scan.server or "Unavailable" }}
+            </strong>
+
+        </div>
+
+
+        <div class="archive-card">
+
+            <span>
+                CONTENT TYPE
+            </span>
+
+            <strong>
+                {{ scan.content_type or "Unavailable" }}
+            </strong>
 
         </div>
 
     </div>
 
+
+
+    <!-- ==================================================
+         FINDINGS
+         ================================================== -->
 
     <div class="section-heading">
 
@@ -326,7 +637,8 @@
         </h2>
 
         <p>
-            Findings recorded when this assessment was performed.
+            Findings recorded when this assessment
+            was originally performed.
         </p>
 
     </div>
@@ -334,13 +646,11 @@
 
     {% if findings %}
 
-    <div class="findings-container">
-
         {% for finding in findings %}
 
-        <div class="finding-card">
+        <article class="dashboard-panel">
 
-            <div class="finding-header">
+            <div class="common-finding-row">
 
                 <div>
 
@@ -348,9 +658,13 @@
                         {{ finding.finding_code }}
                     </span>
 
-                    <h3>
+                    <strong>
                         {{ finding.name }}
-                    </h3>
+                    </strong>
+
+                    <p>
+                        {{ finding.category }}
+                    </p>
 
                 </div>
 
@@ -364,74 +678,187 @@
             </div>
 
 
-            <div class="finding-category">
-                {{ finding.category }}
+            <div class="finding-metadata">
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        SEVERITY
+                    </span>
+
+                    <strong
+                        class="meta-{{ finding.severity|lower }}"
+                    >
+                        {{ finding.severity }}
+                    </strong>
+
+                </div>
+
+
+                {% if finding.confidence %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        CONFIDENCE
+                    </span>
+
+                    <strong>
+                        {{ finding.confidence }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.affected_component %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        AFFECTED COMPONENT
+                    </span>
+
+                    <strong>
+                        {{ finding.affected_component }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.cwe %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        CWE
+                    </span>
+
+                    <strong>
+                        {{ finding.cwe }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.owasp %}
+
+                <div
+                    class="
+                        finding-meta-item
+                        finding-meta-wide
+                    "
+                >
+
+                    <span>
+                        OWASP MAPPING
+                    </span>
+
+                    <strong>
+                        {{ finding.owasp }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
             </div>
 
 
-            <div class="finding-section">
+            <div class="finding-copy">
 
-                <span>
-                    EVIDENCE
-                </span>
+                <div>
 
-                <p>
-                    {{ finding.evidence }}
-                </p>
+                    <span>
+                        EVIDENCE
+                    </span>
+
+                    <p>
+                        {{ finding.evidence }}
+                    </p>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        DESCRIPTION
+                    </span>
+
+                    <p>
+                        {{ finding.description }}
+                    </p>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        RECOMMENDATION
+                    </span>
+
+                    <p>
+                        {{ finding.recommendation }}
+                    </p>
+
+                </div>
 
             </div>
 
+        </article>
 
-            <div class="finding-section">
-
-                <span>
-                    DESCRIPTION
-                </span>
-
-                <p>
-                    {{ finding.description }}
-                </p>
-
-            </div>
+        {% endfor %}
 
 
-            <div class="finding-section">
+    {% else %}
 
-                <span>
-                    RECOMMENDATION
-                </span>
+        <div class="dashboard-panel">
 
-                <p>
-                    {{ finding.recommendation }}
-                </p>
+            <div class="common-finding-row">
+
+                <div>
+
+                    <strong>
+                        No stored findings.
+                    </strong>
+
+
+                    {% if scan.analysis_status == "Skipped" %}
+
+                    <p>
+                        Security analysis was skipped because
+                        reconnaissance did not complete.
+                    </p>
+
+                    {% else %}
+
+                    <p>
+                        This assessment contains no stored
+                        security findings.
+                    </p>
+
+                    {% endif %}
+
+                </div>
 
             </div>
 
         </div>
 
-        {% endfor %}
-
-    </div>
-
-
-    {% else %}
-
-    <div class="no-history">
-
-        No security findings were stored
-        for this assessment.
-
-        {% if scan.analysis_status == "Skipped" %}
-
-        Security analysis was skipped because
-        reconnaissance did not complete successfully.
-
-        {% endif %}
-
-    </div>
-
     {% endif %}
 
+
+
+    <!-- ==================================================
+         ACTIONS
+         ================================================== -->
 
     <div class="detail-actions">
 
@@ -439,8 +866,9 @@
             href="{{ url_for('history') }}"
             class="back-button"
         >
-            ← Scan History
+            Scan History
         </a>
+
 
         <a
             href="{{ url_for('compare_scans', current=scan.scan_id) }}"
@@ -449,13 +877,15 @@
             Compare This Assessment
         </a>
 
+
         <a
             href="{{ url_for('assessment_report', scan_id=scan.scan_id) }}"
             class="back-button"
         >
             Download Assessment Report
         </a>
-        
+
+
         <a
             href="{{ url_for('home') }}"
             class="back-button"
@@ -465,9 +895,12 @@
 
     </div>
 
+
 </section>
 
+
 </main>
+
 
 </body>
 

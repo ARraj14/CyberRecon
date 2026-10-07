@@ -26,7 +26,7 @@
         body {
             margin: 0;
 
-            background: #f4f6f8;
+            background: #f3f5f7;
 
             color: #17202b;
 
@@ -46,9 +46,9 @@
 
             margin: 35px auto;
 
-            background: white;
-
             padding: 55px;
+
+            background: white;
 
             box-shadow:
                 0 4px 25px
@@ -85,6 +85,8 @@
             margin-top: 28px;
 
             font-size: 26px;
+
+            font-weight: 700;
         }
 
 
@@ -100,9 +102,7 @@
 
             margin-top: 18px;
 
-            padding:
-                6px
-                10px;
+            padding: 6px 10px;
 
             border-radius: 4px;
 
@@ -122,7 +122,10 @@
             display: grid;
 
             grid-template-columns:
-                repeat(2, 1fr);
+                repeat(
+                    2,
+                    minmax(0, 1fr)
+                );
 
             gap: 12px;
 
@@ -193,7 +196,10 @@
             display: grid;
 
             grid-template-columns:
-                repeat(5, 1fr);
+                repeat(
+                    5,
+                    minmax(0, 1fr)
+                );
 
             gap: 10px;
 
@@ -246,7 +252,7 @@
 
 
         .low {
-            color: #b69217;
+            color: #a88310;
         }
 
 
@@ -265,9 +271,7 @@
 
 
         .information-table td {
-            padding:
-                11px
-                12px;
+            padding: 11px 12px;
 
             border-bottom:
                 1px solid #e4e8ec;
@@ -275,6 +279,8 @@
             vertical-align: top;
 
             font-size: 13px;
+
+            word-break: break-word;
         }
 
 
@@ -307,7 +313,8 @@
             justify-content:
                 space-between;
 
-            align-items: flex-start;
+            align-items:
+                flex-start;
 
             gap: 20px;
         }
@@ -316,7 +323,8 @@
         .finding-code {
             color: #15966f;
 
-            font-family: monospace;
+            font-family:
+                monospace;
 
             font-size: 11px;
 
@@ -335,9 +343,7 @@
 
 
         .severity {
-            padding:
-                5px
-                9px;
+            padding: 5px 9px;
 
             border-radius: 4px;
 
@@ -345,30 +351,37 @@
 
             font-weight: bold;
 
-            text-transform: uppercase;
+            text-transform:
+                uppercase;
+
+            white-space: nowrap;
         }
 
 
         .severity-high {
             background: #fdecee;
+
             color: #c93d48;
         }
 
 
         .severity-medium {
             background: #fff2e2;
+
             color: #c36c1c;
         }
 
 
         .severity-low {
             background: #fff8dd;
+
             color: #987914;
         }
 
 
         .severity-info {
             background: #eaf4fc;
+
             color: #3277ac;
         }
 
@@ -379,6 +392,61 @@
             color: #7b8793;
 
             font-size: 12px;
+        }
+
+
+        .report-finding-metadata {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    2,
+                    minmax(0, 1fr)
+                );
+
+            gap: 10px;
+
+            margin-top: 16px;
+        }
+
+
+        .report-finding-metadata div {
+            padding: 10px 12px;
+
+            border:
+                1px solid #e3e8ec;
+
+            border-radius: 5px;
+
+            background: #fafbfc;
+        }
+
+
+        .report-finding-metadata span {
+            display: block;
+
+            color: #7b8793;
+
+            font-size: 8px;
+
+            font-weight: bold;
+
+            letter-spacing: 0.8px;
+        }
+
+
+        .report-finding-metadata strong {
+            display: block;
+
+            margin-top: 4px;
+
+            color: #263442;
+
+            font-size: 11px;
+
+            line-height: 1.45;
+
+            word-break: break-word;
         }
 
 
@@ -428,6 +496,22 @@
         }
 
 
+        .scope-box {
+            padding: 18px;
+
+            border:
+                1px solid #e0e5ea;
+
+            border-radius: 6px;
+
+            background: #fafbfc;
+
+            color: #63717d;
+
+            font-size: 13px;
+        }
+
+
         .footer {
             margin-top: 50px;
 
@@ -451,9 +535,7 @@
 
             bottom: 25px;
 
-            padding:
-                12px
-                18px;
+            padding: 12px 18px;
 
             border: none;
 
@@ -501,9 +583,7 @@
         }
 
 
-        @media (
-            max-width: 700px
-        ) {
+        @media (max-width: 700px) {
 
             .report {
                 width: 96%;
@@ -513,13 +593,23 @@
 
 
             .metadata-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns:
+                    1fr;
             }
 
 
             .summary-grid {
                 grid-template-columns:
-                    repeat(2, 1fr);
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+            }
+
+
+            .report-finding-metadata {
+                grid-template-columns:
+                    1fr;
             }
 
         }
@@ -535,541 +625,675 @@
 <div class="report">
 
 
-    <header class="report-header">
+<header class="report-header">
 
-        <div class="brand">
 
-            Cyber<span>Recon</span>
+    <div class="brand">
+        Cyber<span>Recon</span>
+    </div>
 
-        </div>
 
+    <div class="report-title">
+        Web Vulnerability Assessment Report
+    </div>
 
-        <div class="report-title">
 
-            Web Vulnerability Assessment Report
+    <div class="report-subtitle">
 
-        </div>
-
-
-        <div class="report-subtitle">
-
-            Web-Based Vulnerability Assessment
-            and Reconnaissance System
-
-        </div>
-
-
-        <div class="classification">
-
-            SECURITY ASSESSMENT REPORT
-
-        </div>
-
-    </header>
-
-
-    <section class="metadata-grid">
-
-
-        <div class="metadata-item">
-
-            <span>
-                SCAN ID
-            </span>
-
-            <strong>
-                {{ scan.scan_id }}
-            </strong>
-
-        </div>
-
-
-        <div class="metadata-item">
-
-            <span>
-                TARGET
-            </span>
-
-            <strong>
-                {{ scan.target }}
-            </strong>
-
-        </div>
-
-
-        <div class="metadata-item">
-
-            <span>
-                ASSESSMENT DATE
-            </span>
-
-            <strong>
-                {{ scan.started_at }}
-            </strong>
-
-        </div>
-
-
-        <div class="metadata-item">
-
-            <span>
-                DURATION
-            </span>
-
-            <strong>
-                {{ scan.duration_ms }} ms
-            </strong>
-
-        </div>
-
-
-        <div class="metadata-item">
-
-            <span>
-                RECONNAISSANCE STATUS
-            </span>
-
-            <strong>
-                {{ scan.recon_status }}
-            </strong>
-
-        </div>
-
-
-        <div class="metadata-item">
-
-            <span>
-                SECURITY ANALYSIS
-            </span>
-
-            <strong>
-                {{ scan.analysis_status }}
-            </strong>
-
-        </div>
-
-    </section>
-
-
-
-    <h2>
-        1. Executive Summary
-    </h2>
-
-
-    <p class="section-description">
-
-        This report contains the results of a
-        CyberRecon passive web-security assessment.
-        The current analysis evaluates selected HTTP
-        and browser-security configuration indicators.
-        Findings represent observed security
-        conditions and do not independently prove
-        exploitability.
-
-    </p>
-
-
-    <div class="summary-grid">
-
-
-        <div class="summary-card">
-
-            <span>
-                TOTAL
-            </span>
-
-            <strong>
-                {{ severity_summary.Total }}
-            </strong>
-
-        </div>
-
-
-        <div class="summary-card">
-
-            <span>
-                HIGH
-            </span>
-
-            <strong class="high">
-                {{ severity_summary.High }}
-            </strong>
-
-        </div>
-
-
-        <div class="summary-card">
-
-            <span>
-                MEDIUM
-            </span>
-
-            <strong class="medium">
-                {{ severity_summary.Medium }}
-            </strong>
-
-        </div>
-
-
-        <div class="summary-card">
-
-            <span>
-                LOW
-            </span>
-
-            <strong class="low">
-                {{ severity_summary.Low }}
-            </strong>
-
-        </div>
-
-
-        <div class="summary-card">
-
-            <span>
-                INFO
-            </span>
-
-            <strong class="info">
-                {{ severity_summary.Info }}
-            </strong>
-
-        </div>
-
+        Web-Based Vulnerability Assessment
+        and Reconnaissance System
 
     </div>
 
 
+    <div class="classification">
+        SECURITY ASSESSMENT REPORT
+    </div>
 
-    <h2>
-        2. Target Information
-    </h2>
 
+</header>
 
-    <table class="information-table">
 
 
-        <tr>
+<section class="metadata-grid">
 
-            <td>
-                Target
-            </td>
 
-            <td>
-                {{ scan.target }}
-            </td>
+    <div class="metadata-item">
 
-        </tr>
+        <span>
+            SCAN ID
+        </span>
 
+        <strong>
+            {{ scan.scan_id }}
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                Domain
-            </td>
 
-            <td>
-                {{ scan.domain or "Unavailable" }}
-            </td>
+    <div class="metadata-item">
 
-        </tr>
+        <span>
+            TARGET
+        </span>
 
+        <strong>
+            {{ scan.target }}
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                Resolved IP Address
-            </td>
 
-            <td>
-                {{ scan.ip_address or "Unavailable" }}
-            </td>
+    <div class="metadata-item">
 
-        </tr>
+        <span>
+            ASSESSMENT DATE
+        </span>
 
+        <strong>
+            {{ scan.started_at }}
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                Final URL
-            </td>
 
-            <td>
-                {{ scan.final_url or "Unavailable" }}
-            </td>
+    <div class="metadata-item">
 
-        </tr>
+        <span>
+            DURATION
+        </span>
 
+        <strong>
+            {{ scan.duration_ms }} ms
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                HTTP Status
-            </td>
 
-            <td>
-                {{ scan.http_status }}
-            </td>
+    <div class="metadata-item">
 
-        </tr>
+        <span>
+            RECONNAISSANCE STATUS
+        </span>
 
+        <strong>
+            {{ scan.recon_status }}
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                HTTPS Enabled
-            </td>
 
-            <td>
+    <div class="metadata-item">
 
-                {% if scan.https_enabled %}
-                    Yes
-                {% else %}
-                    No
-                {% endif %}
+        <span>
+            SECURITY ANALYSIS
+        </span>
 
-            </td>
+        <strong>
+            {{ scan.analysis_status }}
+        </strong>
 
-        </tr>
+    </div>
 
 
-        <tr>
+    <div class="metadata-item">
 
-            <td>
-                Response Time
-            </td>
+        <span>
+            CHECKS PERFORMED
+        </span>
 
-            <td>
-                {{ scan.response_time }}
-                {% if scan.response_time != "Unavailable" %}
-                    ms
-                {% endif %}
-            </td>
+        <strong>
+            {{ scan.checks_performed }}
+        </strong>
 
-        </tr>
+    </div>
 
 
-        <tr>
+    <div class="metadata-item">
 
-            <td>
-                Redirect Count
-            </td>
+        <span>
+            USER-SCOPED ASSESSMENT
+        </span>
 
-            <td>
-                {{ scan.redirect_count }}
-            </td>
+        <strong>
+            Yes
+        </strong>
 
-        </tr>
+    </div>
 
 
-        <tr>
+</section>
 
-            <td>
-                Page Title
-            </td>
 
-            <td>
-                {{ scan.page_title or "Unavailable" }}
-            </td>
 
-        </tr>
+<h2>
+    1. Executive Summary
+</h2>
 
 
-        <tr>
+<p class="section-description">
 
-            <td>
-                Web Server
-            </td>
+    This report contains the results of a
+    CyberRecon passive web-security assessment.
+    CyberRecon evaluates selected transport,
+    browser-security, cross-origin, cookie and
+    information-disclosure indicators observed
+    through normal HTTP/HTTPS responses.
 
-            <td>
-                {{ scan.server or "Unavailable" }}
-            </td>
+    Findings represent observed security
+    conditions and do not independently prove
+    exploitability.
 
-        </tr>
+</p>
 
 
-        <tr>
+<div class="summary-grid">
 
-            <td>
-                Content Type
-            </td>
 
-            <td>
-                {{ scan.content_type or "Unavailable" }}
-            </td>
+    <div class="summary-card">
 
-        </tr>
+        <span>
+            TOTAL
+        </span>
 
+        <strong>
+            {{ severity_summary.Total }}
+        </strong>
 
-        <tr>
+    </div>
 
-            <td>
-                Security Checks Performed
-            </td>
 
-            <td>
-                {{ scan.checks_performed }}
-            </td>
+    <div class="summary-card">
 
-        </tr>
+        <span>
+            HIGH
+        </span>
 
+        <strong class="high">
+            {{ severity_summary.High }}
+        </strong>
 
-    </table>
+    </div>
 
 
+    <div class="summary-card">
 
-    <h2>
-        3. Security Findings
-    </h2>
+        <span>
+            MEDIUM
+        </span>
 
+        <strong class="medium">
+            {{ severity_summary.Medium }}
+        </strong>
 
-    {% if findings %}
+    </div>
 
 
-        {% for finding in findings %}
+    <div class="summary-card">
 
+        <span>
+            LOW
+        </span>
 
-        <article class="finding">
+        <strong class="low">
+            {{ severity_summary.Low }}
+        </strong>
 
+    </div>
 
-            <div class="finding-header">
 
+    <div class="summary-card">
 
-                <div>
+        <span>
+            INFO
+        </span>
 
-                    <span class="finding-code">
+        <strong class="info">
+            {{ severity_summary.Info }}
+        </strong>
 
-                        {{ finding.finding_code }}
+    </div>
 
-                    </span>
 
+</div>
 
-                    <h3>
 
-                        {{ finding.name }}
 
-                    </h3>
+<h2>
+    2. Target Information
+</h2>
 
-                </div>
 
+<table class="information-table">
 
-                <span
-                    class="severity severity-{{ finding.severity|lower }}"
-                >
 
-                    {{ finding.severity }}
+    <tr>
 
-                </span>
+        <td>
+            Target
+        </td>
 
+        <td>
+            {{ scan.target }}
+        </td>
 
-            </div>
+    </tr>
 
 
-            <div class="finding-category">
+    <tr>
 
-                {{ finding.category }}
+        <td>
+            Domain
+        </td>
 
-            </div>
+        <td>
+            {{ scan.domain or "Unavailable" }}
+        </td>
 
+    </tr>
 
-            <div class="finding-section">
 
-                <span>
-                    EVIDENCE
-                </span>
+    <tr>
 
-                <p>
-                    {{ finding.evidence }}
-                </p>
+        <td>
+            Resolved IP Address
+        </td>
 
-            </div>
+        <td>
+            {{ scan.ip_address or "Unavailable" }}
+        </td>
 
+    </tr>
 
-            <div class="finding-section">
 
-                <span>
-                    DESCRIPTION
-                </span>
+    <tr>
 
-                <p>
-                    {{ finding.description }}
-                </p>
+        <td>
+            Final URL
+        </td>
 
-            </div>
+        <td>
+            {{ scan.final_url or "Unavailable" }}
+        </td>
 
+    </tr>
 
-            <div class="finding-section">
 
-                <span>
-                    RECOMMENDATION
-                </span>
+    <tr>
 
-                <p>
-                    {{ finding.recommendation }}
-                </p>
+        <td>
+            HTTP Status
+        </td>
 
-            </div>
+        <td>
+            {{ scan.http_status or "Unavailable" }}
+        </td>
 
+    </tr>
 
-        </article>
 
+    <tr>
 
-        {% endfor %}
+        <td>
+            HTTPS Enabled
+        </td>
 
+        <td>
 
-    {% else %}
+            {% if scan.https_enabled %}
+                Yes
+            {% else %}
+                No
+            {% endif %}
 
+        </td>
 
-        <div class="no-findings">
+    </tr>
 
-            No security findings were stored for
-            this assessment.
 
-            {% if scan.analysis_status == "Skipped" %}
+    <tr>
 
-            Security analysis was skipped because
-            reconnaissance did not complete.
+        <td>
+            Response Time
+        </td>
+
+        <td>
+
+            {% if scan.response_time is not none %}
+
+                {{ scan.response_time }} ms
+
+            {% else %}
+
+                Unavailable
 
             {% endif %}
+
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Redirect Count
+        </td>
+
+        <td>
+            {{ scan.redirect_count or 0 }}
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Page Title
+        </td>
+
+        <td>
+            {{ scan.page_title or "Unavailable" }}
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Web Server
+        </td>
+
+        <td>
+            {{ scan.server or "Unavailable" }}
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Content Type
+        </td>
+
+        <td>
+            {{ scan.content_type or "Unavailable" }}
+        </td>
+
+    </tr>
+
+
+</table>
+
+
+
+<h2>
+    3. Security Findings
+</h2>
+
+
+{% if findings %}
+
+
+    {% for finding in findings %}
+
+
+    <article class="finding">
+
+
+        <div class="finding-header">
+
+
+            <div>
+
+                <span class="finding-code">
+                    {{ finding.finding_code }}
+                </span>
+
+
+                <h3>
+                    {{ finding.name }}
+                </h3>
+
+            </div>
+
+
+            <span
+                class="
+                    severity
+                    severity-{{ finding.severity|lower }}
+                "
+            >
+                {{ finding.severity }}
+            </span>
+
 
         </div>
 
 
-    {% endif %}
+        <div class="finding-category">
+            {{ finding.category }}
+        </div>
 
 
 
-    <h2>
-        4. Assessment Scope
-    </h2>
+        <div class="report-finding-metadata">
 
 
-    <p class="section-description">
+            <div>
 
-        CyberRecon currently performs passive
-        assessment using DNS resolution, controlled
-        HTTP/HTTPS requests and analysis of selected
-        response configuration. The assessment does
-        not perform exploitation, brute-force attacks
-        or destructive testing.
+                <span>
+                    SEVERITY
+                </span>
 
-    </p>
+                <strong>
+                    {{ finding.severity }}
+                </strong>
+
+            </div>
+
+
+            {% if finding.confidence %}
+
+            <div>
+
+                <span>
+                    CONFIDENCE
+                </span>
+
+                <strong>
+                    {{ finding.confidence }}
+                </strong>
+
+            </div>
+
+            {% endif %}
+
+
+            {% if finding.affected_component %}
+
+            <div>
+
+                <span>
+                    AFFECTED COMPONENT
+                </span>
+
+                <strong>
+                    {{ finding.affected_component }}
+                </strong>
+
+            </div>
+
+            {% endif %}
+
+
+            {% if finding.cwe %}
+
+            <div>
+
+                <span>
+                    CWE
+                </span>
+
+                <strong>
+                    {{ finding.cwe }}
+                </strong>
+
+            </div>
+
+            {% endif %}
+
+
+            {% if finding.owasp %}
+
+            <div>
+
+                <span>
+                    OWASP MAPPING
+                </span>
+
+                <strong>
+                    {{ finding.owasp }}
+                </strong>
+
+            </div>
+
+            {% endif %}
+
+
+        </div>
 
 
 
-    <footer class="footer">
+        <div class="finding-section">
 
-        Generated by CyberRecon —
-        Web-Based Vulnerability Assessment
-        and Reconnaissance System
+            <span>
+                EVIDENCE
+            </span>
 
-        <br>
+            <p>
+                {{ finding.evidence }}
+            </p>
 
-        Scan ID:
-        {{ scan.scan_id }}
+        </div>
 
-    </footer>
+
+        <div class="finding-section">
+
+            <span>
+                DESCRIPTION
+            </span>
+
+            <p>
+                {{ finding.description }}
+            </p>
+
+        </div>
+
+
+        <div class="finding-section">
+
+            <span>
+                RECOMMENDATION
+            </span>
+
+            <p>
+                {{ finding.recommendation }}
+            </p>
+
+        </div>
+
+
+    </article>
+
+
+    {% endfor %}
+
+
+{% else %}
+
+
+    <div class="no-findings">
+
+        No security findings were stored for
+        this assessment.
+
+        {% if scan.analysis_status == "Skipped" %}
+
+        Security analysis was skipped because
+        reconnaissance did not complete.
+
+        {% endif %}
+
+    </div>
+
+
+{% endif %}
+
+
+
+<h2>
+    4. Standards Interpretation
+</h2>
+
+
+<div class="scope-box">
+
+    Where applicable, CyberRecon findings may contain
+    CWE and OWASP mappings to help classify the observed
+    condition.
+
+    These mappings provide context for the finding and
+    should not be interpreted as proof that the target
+    contains a fully exploitable vulnerability.
+
+    Confidence represents CyberRecon's confidence in the
+    observed condition based on the available passive
+    evidence, not the probability of successful exploitation.
+
+</div>
+
+
+
+<h2>
+    5. Assessment Scope
+</h2>
+
+
+<div class="scope-box">
+
+    CyberRecon currently performs passive assessment using
+    DNS resolution, controlled HTTP/HTTPS requests, response
+    metadata collection, security-header inspection,
+    cross-origin configuration observation, selected cookie
+    attribute checks and passive security-rule analysis.
+
+    The assessment does not perform brute-force attacks,
+    credential testing, destructive payloads or exploitation.
+
+    Assessments should only be performed against targets
+    owned by the user or targets for which explicit
+    authorization has been obtained.
+
+</div>
+
+
+
+<footer class="footer">
+
+    Generated by CyberRecon —
+    Web-Based Vulnerability Assessment
+    and Reconnaissance System
+
+    <br>
+
+    Scan ID:
+    {{ scan.scan_id }}
+
+</footer>
 
 
 </div>

@@ -155,17 +155,17 @@ def initialize_database():
                     NOT NULL,
 
                 finding_code TEXT,
-
                 name TEXT,
-
                 category TEXT,
-
                 severity TEXT,
 
+                confidence TEXT,
+                affected_component TEXT,
+                cwe TEXT,
+                owasp TEXT,
+
                 evidence TEXT,
-
                 description TEXT,
-
                 recommendation TEXT,
 
                 FOREIGN KEY (
@@ -176,6 +176,33 @@ def initialize_database():
             )
             """
         )
+        
+        finding_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(findings)"
+            ).fetchall()
+        }
+
+
+        required_finding_columns = {
+            "confidence": "TEXT",
+            "affected_component": "TEXT",
+            "cwe": "TEXT",
+            "owasp": "TEXT",
+        }
+
+
+        for column_name, column_type in required_finding_columns.items():
+
+            if column_name not in finding_columns:
+
+                connection.execute(
+                    f"""
+                    ALTER TABLE findings
+                    ADD COLUMN {column_name} {column_type}
+                    """
+                )
 
 
         connection.execute(
@@ -426,10 +453,8 @@ def save_assessment(
         for finding in findings:
 
             finding_code = (
-                finding.get("id")
-                or finding.get(
-                    "finding_code"
-                )
+                finding.get("finding_code")
+                or finding.get("id")
             )
 
             connection.execute(
@@ -440,32 +465,61 @@ def save_assessment(
                     name,
                     category,
                     severity,
+                    confidence,
+                    affected_component,
+                    cwe,
+                    owasp,
                     evidence,
                     description,
                     recommendation
                 )
 
                 VALUES (
-                    ?, ?, ?, ?, ?,
-                    ?, ?, ?
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?
                 )
                 """,
                 (
                     scan_database_id,
+
                     finding_code,
-                    finding.get("name"),
+
+                    finding.get(
+                        "name"
+                    ),
+
                     finding.get(
                         "category"
                     ),
+
                     finding.get(
                         "severity"
                     ),
+
+                    finding.get(
+                        "confidence"
+                    ),
+
+                    finding.get(
+                        "affected_component"
+                    ),
+
+                    finding.get(
+                        "cwe"
+                    ),
+
+                    finding.get(
+                        "owasp"
+                    ),
+
                     finding.get(
                         "evidence"
                     ),
+
                     finding.get(
                         "description"
                     ),
+
                     finding.get(
                         "recommendation"
                     ),
@@ -596,10 +650,14 @@ def get_scan_by_id(
                 name,
                 category,
                 severity,
+                confidence,
+                affected_component,
+                cwe,
+                owasp,
                 evidence,
                 description,
                 recommendation
-
+            
             FROM findings
 
             WHERE scan_database_id = ?

@@ -40,13 +40,15 @@ from cyberrecon.storage import (
     save_assessment,
 )
 
+
 def get_secret_key():
     """
     Return a stable secret key for Flask sessions.
 
-    Production can supply CYBERRECON_SECRET_KEY.
+    Production may provide CYBERRECON_SECRET_KEY.
+
     During local development, CyberRecon creates
-    a persistent random key inside the data folder.
+    a persistent random key inside data/.
     """
 
     environment_key = os.environ.get(
@@ -72,9 +74,13 @@ def get_secret_key():
     )
 
     if secret_file.exists():
-        return secret_file.read_text(
+
+        stored_key = secret_file.read_text(
             encoding="utf-8"
         ).strip()
+
+        if stored_key:
+            return stored_key
 
     secret_key = secrets.token_hex(32)
 
@@ -85,10 +91,17 @@ def get_secret_key():
 
     return secret_key
 
+
 def login_required(view_function):
+    """
+    Require an authenticated CyberRecon session.
+    """
 
     @wraps(view_function)
-    def wrapped_view(*args, **kwargs):
+    def wrapped_view(
+        *args,
+        **kwargs,
+    ):
 
         if session.get("user_id") is None:
 
@@ -106,17 +119,36 @@ def login_required(view_function):
 
     return wrapped_view
 
+
 def create_app():
 
     app = Flask(__name__)
-    
-    app.config["SECRET_KEY"] = get_secret_key()
 
-    app.config["SESSION_COOKIE_HTTPONLY"] = True
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    # =====================================================
+    # CONFIGURATION
+    # =====================================================
+
+    app.config[
+        "SECRET_KEY"
+    ] = get_secret_key()
+
+    app.config[
+        "SESSION_COOKIE_HTTPONLY"
+    ] = True
+
+    app.config[
+        "SESSION_COOKIE_SAMESITE"
+    ] = "Lax"
+
 
     initialize_database()
-    
+
+
+    # =====================================================
+    # TEMPLATE USER CONTEXT
+    # =====================================================
+
     @app.context_processor
     def inject_current_user():
 
@@ -142,6 +174,278 @@ def create_app():
 
 
     # =====================================================
+    # REGISTER
+    # =====================================================
+
+    @app.route(
+        "/register",
+        methods=[
+            "GET",
+            "POST",
+        ],
+    )
+    def register():
+
+        if session.get("user_id"):
+
+            return redirect(
+                url_for("dashboard")
+            )
+
+
+        error = None
+        success = None
+
+
+        if request.method == "POST":
+
+            username = (
+                request.form.get(
+                    "username",
+                    "",
+                ).strip()
+            )
+
+            email = (
+                request.form.get(
+                    "email",
+                    "",
+                )
+                .strip()
+                .lower()
+            )
+
+            password = request.form.get(
+                "password",
+                "",
+            )
+
+            confirm_password = (
+                request.form.get(
+                    "confirm_password",
+                    "",
+                )
+            )
+
+
+            if not username:
+
+                error = (
+                    "Username is required."
+                )
+
+
+            elif not re.fullmatch(
+                r"[A-Za-z0-9_-]{3,30}",
+                username,
+            ):
+
+                error = (
+                    "Username must be 3–30 "
+                    "characters and contain only "
+                    "letters, numbers, underscores "
+                    "or hyphens."
+                )
+
+
+            elif not re.fullmatch(
+                r"[^@\s]+@[^@\s]+\.[^@\s]+",
+                email,
+            ):
+
+                error = (
+                    "Enter a valid email address."
+                )
+
+
+            elif len(password) < 8:
+
+                error = (
+                    "Password must contain at "
+                    "least 8 characters."
+                )
+
+
+            elif (
+                password
+                != confirm_password
+            ):
+
+                error = (
+                    "Passwords do not match."
+                )
+
+
+            elif get_user_by_username(
+                username
+            ):
+
+                error = (
+                    "That username is already "
+                    "registered."
+                )
+
+
+            elif get_user_by_email(
+                email
+            ):
+
+                error = (
+                    "That email address is "
+                    "already registered."
+                )
+
+
+            else:
+
+                password_hash = (
+                    generate_password_hash(
+                        password
+                    )
+                )
+
+                create_user(
+                    username,
+                    email,
+                    password_hash,
+                )
+
+                success = (
+                    "Account created successfully. "
+                    "You can now log in."
+                )
+
+
+        return render_template(
+            "register.html",
+            error=error,
+            success=success,
+        )
+
+
+    # =====================================================
+    # LOGIN
+    # =====================================================
+
+    @app.route(
+        "/login",
+        methods=[
+            "GET",
+            "POST",
+        ],
+    )
+    def login():
+
+        if session.get("user_id"):
+
+            return redirect(
+                url_for("dashboard")
+            )
+
+
+        error = None
+
+
+        if request.method == "POST":
+
+            email = (
+                request.form.get(
+                    "email",
+                    "",
+                )
+                .strip()
+                .lower()
+            )
+
+            password = (
+                request.form.get(
+                    "password",
+                    "",
+                )
+            )
+
+
+            user = get_user_by_email(
+                email
+            )
+
+
+            if (
+                user is None
+                or not check_password_hash(
+                    user["password_hash"],
+                    password,
+                )
+            ):
+
+                error = (
+                    "Invalid email address "
+                    "or password."
+                )
+
+
+            else:
+
+                session.clear()
+
+                session["user_id"] = (
+                    user["id"]
+                )
+
+                session["username"] = (
+                    user["username"]
+                )
+
+
+                next_url = (
+                    request.form.get(
+                        "next"
+                    )
+                    or request.args.get(
+                        "next"
+                    )
+                )
+
+
+                if (
+                    next_url
+                    and next_url.startswith("/")
+                    and not next_url.startswith("//")
+                ):
+
+                    return redirect(
+                        next_url
+                    )
+
+
+                return redirect(
+                    url_for(
+                        "dashboard"
+                    )
+                )
+
+
+        return render_template(
+            "login.html",
+            error=error,
+        )
+
+
+    # =====================================================
+    # LOGOUT
+    # =====================================================
+
+    @app.route("/logout")
+    def logout():
+
+        session.clear()
+
+        return redirect(
+            url_for("home")
+        )
+
+
+    # =====================================================
     # RUN ASSESSMENT
     # =====================================================
 
@@ -157,21 +461,25 @@ def create_app():
             "",
         )
 
+
         try:
 
             assessment = run_assessment(
                 target
             )
 
+
             save_assessment(
                 assessment,
                 session["user_id"],
             )
 
+
             return render_template(
                 "results.html",
                 **assessment,
             )
+
 
         except ValueError as error:
 
@@ -190,10 +498,13 @@ def create_app():
     @login_required
     def dashboard():
 
-        analytics = get_dashboard_analytics(
-            session["user_id"]
+        analytics = (
+            get_dashboard_analytics(
+                session["user_id"]
+            )
         )
-        
+
+
         return render_template(
             "dashboard.html",
             analytics=analytics,
@@ -201,7 +512,7 @@ def create_app():
 
 
     # =====================================================
-    # SCAN HISTORY
+    # HISTORY
     # =====================================================
 
     @app.route("/history")
@@ -212,6 +523,7 @@ def create_app():
             session["user_id"]
         )
 
+
         return render_template(
             "history.html",
             scans=scans,
@@ -219,7 +531,7 @@ def create_app():
 
 
     # =====================================================
-    # STORED SCAN DETAILS
+    # ARCHIVED SCAN DETAILS
     # =====================================================
 
     @app.route(
@@ -228,10 +540,13 @@ def create_app():
     @login_required
     def scan_detail(scan_id):
 
-        stored_assessment = get_scan_by_id(
-            scan_id,
-            session["user_id"],
+        stored_assessment = (
+            get_scan_by_id(
+                scan_id,
+                session["user_id"],
+            )
         )
+
 
         if stored_assessment is None:
 
@@ -239,6 +554,7 @@ def create_app():
                 "Stored assessment not found.",
                 404,
             )
+
 
         return render_template(
             "scan_detail.html",
@@ -254,7 +570,7 @@ def create_app():
 
 
     # =====================================================
-    # DOWNLOADABLE HTML REPORT
+    # DOWNLOAD REPORT
     # =====================================================
 
     @app.route(
@@ -263,10 +579,13 @@ def create_app():
     @login_required
     def assessment_report(scan_id):
 
-        stored_assessment = get_scan_by_id(
-            scan_id,
-            session["user_id"],
+        stored_assessment = (
+            get_scan_by_id(
+                scan_id,
+                session["user_id"],
+            )
         )
+
 
         if stored_assessment is None:
 
@@ -276,13 +595,17 @@ def create_app():
             )
 
 
-        scan = stored_assessment[
-            "scan"
-        ]
+        scan_data = (
+            stored_assessment[
+                "scan"
+            ]
+        )
 
-        findings = stored_assessment[
-            "findings"
-        ]
+        findings = (
+            stored_assessment[
+                "findings"
+            ]
+        )
 
 
         severity_summary = {
@@ -300,10 +623,7 @@ def create_app():
                 "severity"
             )
 
-            if (
-                severity
-                in severity_summary
-            ):
+            if severity in severity_summary:
 
                 severity_summary[
                     severity
@@ -314,7 +634,7 @@ def create_app():
             render_template(
                 "report.html",
 
-                scan=scan,
+                scan=scan_data,
 
                 findings=findings,
 
@@ -347,8 +667,7 @@ def create_app():
         response.headers[
             "Content-Type"
         ] = (
-            "text/html; "
-            "charset=utf-8"
+            "text/html; charset=utf-8"
         )
 
 
@@ -363,18 +682,28 @@ def create_app():
     @login_required
     def compare_scans():
 
+        user_id = session[
+            "user_id"
+        ]
+
+
+        # Only this user's completed scans
+        # are available for comparison.
         scans = get_completed_scans(
-            session["user_id"]
+            user_id
         )
 
-        baseline_assessment = get_scan_by_id(
-            baseline_id,
-            session["user_id"],
+
+        # IMPORTANT:
+        # Define the selected scan IDs BEFORE
+        # trying to load either assessment.
+
+        baseline_id = request.args.get(
+            "baseline"
         )
 
-        current_assessment = get_scan_by_id(
-            current_id,
-            session["user_id"],
+        current_id = request.args.get(
+            "current"
         )
 
 
@@ -383,6 +712,8 @@ def create_app():
         comparison_error = None
 
 
+        # No comparison is attempted until both
+        # dropdown values have been supplied.
         if (
             baseline_id
             and current_id
@@ -390,13 +721,15 @@ def create_app():
 
             baseline_assessment = (
                 get_scan_by_id(
-                    baseline_id
+                    baseline_id,
+                    user_id,
                 )
             )
 
             current_assessment = (
                 get_scan_by_id(
-                    current_id
+                    current_id,
+                    user_id,
                 )
             )
 
@@ -410,8 +743,8 @@ def create_app():
 
                 comparison_error = (
                     "One or both stored "
-                    "assessments could "
-                    "not be found."
+                    "assessments could not "
+                    "be found."
                 )
 
 
@@ -436,6 +769,7 @@ def create_app():
                             current_assessment,
                         )
                     )
+
 
                 except ValueError as error:
 
@@ -462,270 +796,6 @@ def create_app():
             selected_current=(
                 current_id
             ),
-        )
-
-
-    # =====================================================
-    # USER REGISTRATION
-    # =====================================================
-
-    @app.route(
-        "/register",
-        methods=[
-            "GET",
-            "POST",
-        ],
-    )
-    def register():
-
-        error = None
-
-        success = None
-
-
-        if request.method == "POST":
-
-            username = (
-                request.form.get(
-                    "username",
-                    "",
-                ).strip()
-            )
-
-
-            email = (
-                request.form.get(
-                    "email",
-                    "",
-                )
-                .strip()
-                .lower()
-            )
-
-
-            password = (
-                request.form.get(
-                    "password",
-                    "",
-                )
-            )
-
-
-            confirm_password = (
-                request.form.get(
-                    "confirm_password",
-                    "",
-                )
-            )
-
-
-            # ---------------------------------------------
-            # USERNAME VALIDATION
-            # ---------------------------------------------
-
-            if not username:
-
-                error = (
-                    "Username is required."
-                )
-
-
-            elif not re.fullmatch(
-                r"[A-Za-z0-9_-]{3,30}",
-                username,
-            ):
-
-                error = (
-                    "Username must be "
-                    "3–30 characters and "
-                    "contain only letters, "
-                    "numbers, underscores "
-                    "or hyphens."
-                )
-
-
-            # ---------------------------------------------
-            # EMAIL VALIDATION
-            # ---------------------------------------------
-
-            elif not re.fullmatch(
-                r"[^@\s]+@[^@\s]+\.[^@\s]+",
-                email,
-            ):
-
-                error = (
-                    "Enter a valid "
-                    "email address."
-                )
-
-
-            # ---------------------------------------------
-            # PASSWORD VALIDATION
-            # ---------------------------------------------
-
-            elif len(password) < 8:
-
-                error = (
-                    "Password must contain "
-                    "at least 8 characters."
-                )
-
-
-            elif (
-                password
-                != confirm_password
-            ):
-
-                error = (
-                    "Passwords do not match."
-                )
-
-
-            # ---------------------------------------------
-            # DUPLICATE USER CHECK
-            # ---------------------------------------------
-
-            elif get_user_by_username(
-                username
-            ):
-
-                error = (
-                    "That username is "
-                    "already registered."
-                )
-
-
-            elif get_user_by_email(
-                email
-            ):
-
-                error = (
-                    "That email address is "
-                    "already registered."
-                )
-
-
-            # ---------------------------------------------
-            # CREATE USER
-            # ---------------------------------------------
-
-            else:
-
-                password_hash = (
-                    generate_password_hash(
-                        password
-                    )
-                )
-
-
-                create_user(
-                    username,
-                    email,
-                    password_hash,
-                )
-
-
-                success = (
-                    "Account created "
-                    "successfully. "
-                    "You can now log in."
-                )
-
-
-        return render_template(
-            "register.html",
-
-            error=error,
-
-            success=success,
-        )
-        
-    @app.route(
-    "/login",
-    methods=["GET", "POST"],
-    )
-    def login():
-
-        if session.get("user_id"):
-            return redirect(
-                url_for("dashboard")
-            )
-
-        error = None
-
-        if request.method == "POST":
-
-            email = (
-                request.form.get(
-                    "email",
-                    "",
-                )
-                .strip()
-                .lower()
-            )
-
-            password = request.form.get(
-                "password",
-                "",
-            )
-
-            user = get_user_by_email(
-                email
-            )
-
-            if (
-                user is None
-                or not check_password_hash(
-                    user["password_hash"],
-                    password,
-                )
-            ):
-                error = (
-                    "Invalid email address "
-                    "or password."
-                )
-
-            else:
-
-                session.clear()
-
-                session["user_id"] = (
-                    user["id"]
-                )
-
-                session["username"] = (
-                    user["username"]
-                )
-
-                next_url = (
-                    request.form.get("next")
-                    or request.args.get("next")
-                )
-
-                if (
-                    next_url
-                    and next_url.startswith("/")
-                    and not next_url.startswith("//")
-                ):
-                    return redirect(next_url)
-
-                return redirect(
-                    url_for("dashboard")
-                )
-
-        return render_template(
-            "login.html",
-            error=error,
-        )
-
-
-    @app.route("/logout")
-    def logout():
-
-        session.clear()
-
-        return redirect(
-            url_for("home")
         )
 
 

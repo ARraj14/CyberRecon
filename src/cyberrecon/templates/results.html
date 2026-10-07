@@ -10,23 +10,179 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Assessment | CyberRecon</title>
+    <title>
+        Assessment Results | CyberRecon
+    </title>
 
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='css/style.css') }}"
     >
 
+    <style>
+
+        .finding-metadata {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(0, 1fr)
+                );
+
+            gap: 10px;
+
+            margin-top: 18px;
+            margin-bottom: 18px;
+        }
+
+
+        .finding-meta-item {
+            padding: 11px 12px;
+
+            border: 1px solid #1e344b;
+
+            border-radius: 7px;
+
+            background:
+                rgba(
+                    8,
+                    17,
+                    28,
+                    0.65
+                );
+        }
+
+
+        .finding-meta-item span {
+            display: block;
+
+            color: #64788e;
+
+            font-size: 8px;
+
+            font-weight: 600;
+
+            letter-spacing: 0.9px;
+        }
+
+
+        .finding-meta-item strong {
+            display: block;
+
+            margin-top: 5px;
+
+            color: #bfcedd;
+
+            font-size: 11px;
+
+            line-height: 1.4;
+
+            word-break: break-word;
+        }
+
+
+        .finding-meta-wide {
+            grid-column: span 2;
+        }
+
+
+        .meta-high {
+            color: #ff6673 !important;
+        }
+
+
+        .meta-medium {
+            color: #f0a14a !important;
+        }
+
+
+        .meta-low {
+            color: #e5c556 !important;
+        }
+
+
+        .meta-info {
+            color: #65aee8 !important;
+        }
+
+
+        .finding-detail-section {
+            margin-top: 14px;
+        }
+
+
+        .finding-detail-section > span {
+            display: block;
+
+            margin-bottom: 5px;
+
+            color: #60758a;
+
+            font-size: 9px;
+
+            font-weight: 600;
+
+            letter-spacing: 0.8px;
+        }
+
+
+        .finding-detail-section p {
+            margin: 0;
+
+            color: #aebdca;
+
+            line-height: 1.7;
+        }
+
+
+        .header-value {
+            word-break: break-word;
+        }
+
+
+        @media (max-width: 850px) {
+
+            .finding-metadata {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+            }
+
+        }
+
+
+        @media (max-width: 520px) {
+
+            .finding-metadata {
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .finding-meta-wide {
+                grid-column:
+                    span 1;
+            }
+
+        }
+
+    </style>
+
 </head>
 
 
 <body>
+
 
 <nav class="navbar">
 
     <div class="brand">
         Cyber<span>Recon</span>
     </div>
+
 
     <div class="nav-actions">
 
@@ -35,6 +191,13 @@
             class="nav-link"
         >
             New Assessment
+        </a>
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="nav-link"
+        >
+            Dashboard
         </a>
 
         <a
@@ -51,39 +214,34 @@
             Compare
         </a>
 
+
         {% if current_user_id %}
 
-            <span class="nav-user">
-                {{ current_username }}
-            </span>
+        <span class="nav-user">
+            {{ current_username }}
+        </span>
 
-            <a
-                href="{{ url_for('logout') }}"
-                class="nav-link"
-            >
-                Logout
-            </a>
+        <a
+            href="{{ url_for('logout') }}"
+            class="nav-link"
+        >
+            Logout
+        </a>
 
         {% else %}
 
-            <a
-                href="{{ url_for('login') }}"
-                class="nav-link"
-            >
-                Login
-            </a>
-
-            <a
-                href="{{ url_for('register') }}"
-                class="nav-link"
-            >
-                Register
-            </a>
+        <a
+            href="{{ url_for('login') }}"
+            class="nav-link"
+        >
+            Login
+        </a>
 
         {% endif %}
 
+
         <div class="nav-status">
-            ANALYTICS DASHBOARD
+            ASSESSMENT RESULTS
         </div>
 
     </div>
@@ -91,594 +249,813 @@
 </nav>
 
 
+
 <main class="container">
 
-    <section class="results">
 
-        <div class="tag">
-            RECONNAISSANCE COMPLETE
-        </div>
+<section class="results-section">
 
-        <h1>
-            Target
-            <span>Analyzed.</span>
-        </h1>
 
-        <p class="subtitle">
-            CyberRecon collected basic web and network
-            information from the supplied target.
+    <div class="tag">
+        CYBERRECON ASSESSMENT
+    </div>
+
+
+    <h1>
+        Security
+        <span>Assessment Results.</span>
+    </h1>
+
+
+    <p class="subtitle">
+
+        Passive reconnaissance and security
+        configuration analysis for the
+        supplied target.
+
+    </p>
+
+
+
+    <!-- ==================================================
+         SCAN METADATA
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Scan Metadata
+        </h2>
+
+        <p>
+            Assessment identification and execution details.
         </p>
 
-        <div class="scan-metadata">
+    </div>
 
-            <div class="metadata-item">
 
-                <span>
-                    SCAN ID
+    <div class="dashboard-overview">
+
+        <div class="dashboard-card">
+
+            <span>
+                SCAN ID
+            </span>
+
+            <strong>
+                {{ metadata.scan_id }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                STARTED
+            </span>
+
+            <strong>
+                {{ metadata.started_at }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                DURATION
+            </span>
+
+            <strong>
+                {{ metadata.duration_ms }} ms
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                CHECKS PERFORMED
+            </span>
+
+            <strong>
+                {{ metadata.checks_performed }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ==================================================
+         RECONNAISSANCE SUMMARY
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Reconnaissance Summary
+        </h2>
+
+        <p>
+            High-level network and HTTP information
+            observed by CyberRecon.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-overview">
+
+        <div class="dashboard-card">
+
+            <span>
+                HTTP STATUS
+            </span>
+
+            <strong>
+                {{ recon.status_code }}
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                HTTPS
+            </span>
+
+            <strong>
+
+                {% if recon.https_enabled %}
+                    Enabled
+                {% else %}
+                    Not Enabled
+                {% endif %}
+
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                RESPONSE TIME
+            </span>
+
+            <strong>
+
+                {% if recon.response_time == "Unavailable" %}
+
+                    Unavailable
+
+                {% else %}
+
+                    {{ recon.response_time }} ms
+
+                {% endif %}
+
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                REDIRECTS
+            </span>
+
+            <strong>
+                {{ recon.redirect_count }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ==================================================
+         TARGET INFORMATION
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Target Information
+        </h2>
+
+        <p>
+            Normalized target and collected response metadata.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-panel">
+
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    TARGET
                 </span>
 
                 <strong>
-                    {{ metadata.scan_id }}
+                    {{ target }}
                 </strong>
-
-            </div>
-
-
-            <div class="metadata-item">
-
-                <span>
-                    STARTED
-                </span>
-
-                <strong>
-                    {{ metadata.started_at }}
-                </strong>
-
-            </div>
-
-
-            <div class="metadata-item">
-
-                <span>
-                    DURATION
-                </span>
-
-                <strong>
-                    {{ metadata.duration_ms }} ms
-                </strong>
-
-            </div>
-
-
-            <div class="metadata-item">
-
-                <span>
-                    CHECKS
-                </span>
-
-                <strong>
-                    {{ metadata.checks_performed }}
-                </strong>
-
             </div>
 
         </div>
 
 
-        <div class="summary-grid">
+        <div class="common-finding-row">
 
-            <div class="summary-card">
-
-                <span class="summary-label">
-                    HTTP STATUS
+            <div>
+                <span class="finding-id">
+                    DOMAIN
                 </span>
 
                 <strong>
-                    {{ recon.status_code }}
-                </strong>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <span class="summary-label">
-                    HTTPS
-                </span>
-
-                <strong>
-                    {% if recon.https_enabled %}
-                        Enabled
-                    {% else %}
-                        Disabled
-                    {% endif %}
-                </strong>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <span class="summary-label">
-                    RESPONSE TIME
-                </span>
-
-                <strong>
-                    {% if recon.response_time != "Unavailable" %}
-                        {{ recon.response_time }} ms
-                    {% else %}
-                        Unavailable
-                    {% endif %}
-                </strong>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <span class="summary-label">
-                    REDIRECTS
-                </span>
-
-                <strong>
-                    {{ recon.redirect_count }}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="section-heading">
-
-            <h2>
-                Target Information
-            </h2>
-
-            <p>
-                Basic information discovered during reconnaissance.
-            </p>
-
-        </div>
-
-
-        <div class="result-panel">
-
-            <div class="result-row">
-
-                <span class="result-title">
-                    Original Target
-                </span>
-
-                <span>
-                    {{ recon.target }}
-                </span>
-
-            </div>
-
-
-            <div class="result-row">
-
-                <span class="result-title">
-                    Final URL
-                </span>
-
-                <span>
-                    {{ recon.final_url }}
-                </span>
-
-            </div>
-
-            {% if recon.fallback_used %}
-
-            <div class="result-row">
-
-                <span class="result-title">
-                    Connection Fallback
-                </span>
-
-                <span class="warning-text">
-                    HTTPS unavailable — HTTP fallback used
-                </span>
-
-            </div>
-
-            {% endif %}
-
-            <div class="result-row">
-
-                <span class="result-title">
-                    Domain
-                </span>
-
-                <span>
                     {{ recon.domain }}
-                </span>
-
+                </strong>
             </div>
 
+        </div>
 
-            <div class="result-row">
 
-                <span class="result-title">
-                    IP Address
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    RESOLVED IP
                 </span>
 
-                <span>
+                <strong>
                     {{ recon.ip_address }}
-                </span>
-
+                </strong>
             </div>
 
+        </div>
 
-            <div class="result-row">
 
-                <span class="result-title">
-                    Page Title
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    FINAL URL
                 </span>
 
-                <span>
+                <strong>
+                    {{ recon.final_url }}
+                </strong>
+            </div>
+
+        </div>
+
+
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    PAGE TITLE
+                </span>
+
+                <strong>
                     {{ recon.page_title }}
-                </span>
-
+                </strong>
             </div>
 
+        </div>
 
-            <div class="result-row">
 
-                <span class="result-title">
-                    Web Server
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    WEB SERVER
                 </span>
 
-                <span>
+                <strong>
                     {{ recon.server }}
-                </span>
-
+                </strong>
             </div>
 
+        </div>
 
-            <div class="result-row">
 
-                <span class="result-title">
-                    Content Type
+        <div class="common-finding-row">
+
+            <div>
+                <span class="finding-id">
+                    CONTENT TYPE
                 </span>
 
-                <span>
+                <strong>
                     {{ recon.content_type }}
-                </span>
-
+                </strong>
             </div>
 
         </div>
 
-
-        {% if recon.reachable %}
-
-        <div class="section-heading">
-
-            <h2>
-                HTTP Response Headers
-            </h2>
-
-            <p>
-                Selected headers relevant to web security analysis.
-            </p>
-
-        </div>
+    </div>
 
 
-        <div class="result-panel">
 
-            {% for name, value in recon.headers.items() %}
+    <!-- ==================================================
+         RESPONSE HEADERS
+         ================================================== -->
 
-            <div class="result-row">
+    <div class="section-heading">
 
-                <span class="result-title">
-                    {{ name }}
-                </span>
+        <h2>
+            HTTP Response Headers
+        </h2>
 
-                <span
-                    class="{% if value == 'Not present' %}missing-value{% endif %}"
-                >
-                    {{ value }}
-                </span>
+        <p>
+            Selected headers used during passive
+            security analysis.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-panel">
+
+        {% if recon.headers %}
+
+            {% for header_name, header_value in recon.headers.items() %}
+
+            <div class="common-finding-row">
+
+                <div>
+
+                    <span class="finding-id">
+                        {{ header_name }}
+                    </span>
+
+                    <strong class="header-value">
+                        {{ header_value }}
+                    </strong>
+
+                </div>
 
             </div>
 
             {% endfor %}
 
-        </div>
-
         {% else %}
 
-        <div class="connection-error">
+            <div class="common-finding-row">
 
-            <div class="connection-error-title">
+                <div>
 
-                {{ recon.error_type }}
+                    <strong>
+                        No response headers were available.
+                    </strong>
+
+                </div>
 
             </div>
-
-            <p>
-                {{ recon.error_message }}
-            </p>
-
-            <p class="connection-error-target">
-
-                Target:
-                {{ recon.target }}
-
-            </p>
-
-        </div>
 
         {% endif %}
 
-        <div class="section-heading">
+    </div>
 
-            <h2>
-                Security Analysis
-            </h2>
 
-            <p>
-                Passive security observations identified from
-                the target's HTTP configuration.
-            </p>
+
+    <!-- ==================================================
+         FINDING SUMMARY
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Security Analysis
+        </h2>
+
+        <p>
+            Passive observations identified by the
+            CyberRecon rule engine.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-severity">
+
+        <div class="severity-stat">
+
+            <span>
+                TOTAL
+            </span>
+
+            <strong>
+                {{ finding_summary.Total }}
+            </strong>
 
         </div>
 
 
-        <div class="security-summary">
+        <div class="severity-stat severity-high">
 
-            <div class="severity-card">
+            <span>
+                HIGH
+            </span>
 
-                <span>
-                    TOTAL
-                </span>
+            <strong>
+                {{ finding_summary.High }}
+            </strong>
 
-                <strong>
-                    {{ finding_summary.Total }}
-                </strong>
-
-            </div>
+        </div>
 
 
-            <div class="severity-card severity-high">
+        <div class="severity-stat severity-medium">
 
-                <span>
-                    HIGH
-                </span>
-
-                <strong>
-                    {{ finding_summary.High }}
-                </strong>
-
-            </div>
-
-
-            <div class="severity-card severity-medium">
-
-             <span>
+            <span>
                 MEDIUM
-                </span>
+            </span>
 
-                <strong>
-                    {{ finding_summary.Medium }}
-                </strong>
-
-            </div>
-
-
-            <div class="severity-card severity-low">
-
-                <span>
-                    LOW
-                </span>
-
-                <strong>
-                    {{ finding_summary.Low }}
-                </strong>
-
-            </div>
-
-
-            <div class="severity-card severity-info">
-
-                <span>
-                    INFO
-                </span>
-
-                <strong>
-                    {{ finding_summary.Info }}
-                </strong>
-
-            </div>
+            <strong>
+                {{ finding_summary.Medium }}
+            </strong>
 
         </div>
 
 
-        <div class="findings-container">
+        <div class="severity-stat severity-low">
 
-        {% if findings %}
+            <span>
+                LOW
+            </span>
 
-            {% for finding in findings %}
+            <strong>
+                {{ finding_summary.Low }}
+            </strong>
 
-            <div class="finding-card">
+        </div>
 
-                <div class="finding-header">
 
-                    <div>
+        <div class="severity-stat severity-info">
 
-                        <span class="finding-id">
-                            {{ finding.id }}
+            <span>
+                INFO
+            </span>
+
+            <strong>
+                {{ finding_summary.Info }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ==================================================
+         INDIVIDUAL FINDINGS
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Detailed Findings
+        </h2>
+
+        <p>
+            Evidence, interpretation, standards mapping
+            and recommended remediation.
+        </p>
+
+    </div>
+
+
+    {% if findings %}
+
+        {% for finding in findings %}
+
+        <article class="dashboard-panel finding-card">
+
+            <div class="common-finding-row">
+
+                <div>
+
+                    <span class="finding-id">
+                        {{ finding.id }}
+                    </span>
+
+                    <strong>
+                        {{ finding.name }}
+                    </strong>
+
+                    <p>
+                        {{ finding.category }}
+                    </p>
+
+                </div>
+
+
+                <span
+                    class="severity-badge severity-{{ finding.severity|lower }}"
+                >
+                    {{ finding.severity }}
+                </span>
+
+            </div>
+
+
+            <div class="finding-metadata">
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        SEVERITY
+                    </span>
+
+                    <strong
+                        class="meta-{{ finding.severity|lower }}"
+                    >
+                        {{ finding.severity }}
+                    </strong>
+
+                </div>
+
+
+                {% if finding.confidence %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        CONFIDENCE
+                    </span>
+
+                    <strong>
+                        {{ finding.confidence }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.affected_component %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        AFFECTED COMPONENT
+                    </span>
+
+                    <strong>
+                        {{ finding.affected_component }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.cwe %}
+
+                <div class="finding-meta-item">
+
+                    <span>
+                        CWE
+                    </span>
+
+                    <strong>
+                        {{ finding.cwe }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+
+                {% if finding.owasp %}
+
+                <div
+                    class="
+                        finding-meta-item
+                        finding-meta-wide
+                    "
+                >
+
+                    <span>
+                        OWASP MAPPING
+                    </span>
+
+                    <strong>
+                        {{ finding.owasp }}
+                    </strong>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="common-finding-row">
+
+                <div>
+
+                    <div class="finding-detail-section">
+
+                        <span>
+                            EVIDENCE
                         </span>
 
-                        <h3>
-                            {{ finding.name }}
-                        </h3>
+                        <p>
+                            {{ finding.evidence }}
+                        </p>
 
                     </div>
 
 
-                    <span
-                        class="severity-badge severity-{{ finding.severity|lower }}"
-                    >
-                        {{ finding.severity }}
-                    </span>
+                    <div class="finding-detail-section">
 
-                </div>
+                        <span>
+                            DESCRIPTION
+                        </span>
 
+                        <p>
+                            {{ finding.description }}
+                        </p>
 
-                <div class="finding-category">
-
-                    {{ finding.category }}
-
-                </div>
+                    </div>
 
 
-                <div class="finding-section">
+                    <div class="finding-detail-section">
 
-                    <span>
-                        EVIDENCE
-                    </span>
+                        <span>
+                            RECOMMENDATION
+                        </span>
 
-                    <p>
-                        {{ finding.evidence }}
-                    </p>
+                        <p>
+                            {{ finding.recommendation }}
+                        </p>
 
-                </div>
-
-
-                <div class="finding-section">
-
-                    <span>
-                        DESCRIPTION
-                    </span>
-
-                    <p>
-                        {{ finding.description }}
-                    </p>
-
-                </div>
-
-
-                <div class="finding-section">
-
-                    <span>
-                        RECOMMENDATION
-                    </span>
-
-                    <p>
-                        {{ finding.recommendation }}
-                    </p>
+                    </div>
 
                 </div>
 
             </div>
 
-            {% endfor %}
+        </article>
+
+        {% endfor %}
 
 
-        {% else %}
+    {% else %}
 
-            <div class="no-findings">
+        <div class="dashboard-panel">
 
-                No security configuration findings were
-                identified by the currently implemented checks.
+            <div class="common-finding-row">
 
-            </div>
+                <div>
 
-        {% endif %}
+                    {% if metadata.analysis_status == "Skipped" %}
 
-        </div>
+                    <strong>
+                        Security analysis was skipped.
+                    </strong>
 
+                    <p>
+                        Reconnaissance did not complete,
+                        so CyberRecon did not run the
+                        security rule engine.
+                    </p>
 
-        <div class="development-status">
+                    {% else %}
 
-            <h3>
-                Assessment Pipeline
-            </h3>
+                    <strong>
+                        No findings detected.
+                    </strong>
 
-            <div class="pipeline">
+                    <p>
+                        No configured CyberRecon rule
+                        produced a finding for this
+                        response.
+                    </p>
 
-                <div class="pipeline-step completed">
-
-                    <span>01</span>
-
-                    Target Input
-
-                </div>
-
-
-                <div class="pipeline-step completed">
-
-                    <span>02</span>
-
-                    Validation
-
-                </div>
-
-
-                {% if recon.reachable %}
-
-                <div class="pipeline-step completed">
-
-                    <span>03</span>
-
-                    Reconnaissance
+                    {% endif %}
 
                 </div>
-
-                {% else %}
-
-                <div class="pipeline-step failed">
-
-                    <span>03</span>
-
-                    Reconnaissance Failed
-
-                </div>
-
-                {% endif %}
-
-
-                {% if metadata.analysis_status == "Completed" %}
-
-                <div class="pipeline-step completed">
-
-                    <span>04</span>
-
-                    Security Analysis
-
-                </div>
-
-                {% else %}
-
-                <div class="pipeline-step">
-
-                    <span>04</span>
-
-                    Analysis Skipped
-
-                </div>
-
-                {% endif %}
 
             </div>
 
         </div>
 
+    {% endif %}
 
-        <a
-            href="{{ url_for('home') }}"
-            class="back-button"
-        >
-            ← New Assessment
-        </a>
 
-    </section>
+
+    <!-- ==================================================
+         PIPELINE STATUS
+         ================================================== -->
+
+    <div class="section-heading">
+
+        <h2>
+            Assessment Pipeline
+        </h2>
+
+        <p>
+            Status of the CyberRecon processing stages.
+        </p>
+
+    </div>
+
+
+    <div class="dashboard-overview">
+
+        <div class="dashboard-card">
+
+            <span>
+                TARGET INPUT
+            </span>
+
+            <strong class="dashboard-success">
+                Completed
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                VALIDATION
+            </span>
+
+            <strong class="dashboard-success">
+                Completed
+            </strong>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                RECONNAISSANCE
+            </span>
+
+            {% if metadata.recon_status == "Completed" %}
+
+            <strong class="dashboard-success">
+                Completed
+            </strong>
+
+            {% else %}
+
+            <strong class="dashboard-failed">
+                {{ metadata.recon_status }}
+            </strong>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+            <span>
+                SECURITY ANALYSIS
+            </span>
+
+            {% if metadata.analysis_status == "Completed" %}
+
+            <strong class="dashboard-success">
+                Completed
+            </strong>
+
+            {% else %}
+
+            <strong class="dashboard-failed">
+                {{ metadata.analysis_status }}
+            </strong>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+</section>
+
 
 </main>
+
 
 </body>
 

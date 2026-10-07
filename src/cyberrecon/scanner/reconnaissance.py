@@ -95,35 +95,46 @@ def failure_result(
     return {
         "target": target,
         "domain": hostname,
+
         "ip_address": (
             ip_address
             if ip_address
             else "Unable to resolve"
         ),
+
         "reachable": False,
         "status_code": "Unavailable",
         "final_url": target,
+
         "https_enabled": (
             urlparse(target).scheme == "https"
         ),
+
         "response_time": "Unavailable",
         "page_title": "Unavailable",
         "server": "Unavailable",
         "content_type": "Unavailable",
+
         "redirect_count": 0,
+
         "headers": {},
+
+        # Used later for cookie-security checks.
+        "set_cookies": [],
+
         "fallback_used": False,
+
         "error_type": error_type,
         "error_message": message,
 
-        # Kept for compatibility with the current template.
+        # Kept for compatibility with existing templates.
         "error": message,
     }
 
 
 def perform_request(target):
     """
-    Send the HTTP request using a controlled
+    Send an HTTP request using a controlled
     requests session.
     """
 
@@ -134,7 +145,7 @@ def perform_request(target):
 
     headers = {
         "User-Agent": (
-            "CyberRecon/0.3 "
+            "CyberRecon/0.8 "
             "Web Security Assessment Platform"
         )
     }
@@ -147,13 +158,111 @@ def perform_request(target):
     )
 
 
+def get_set_cookie_headers(response):
+    """
+    Return individual Set-Cookie headers when
+    available.
+
+    Keeping cookies separately is important because
+    multiple Set-Cookie headers may exist in one
+    response.
+    """
+
+    try:
+
+        raw_headers = response.raw.headers
+
+        if hasattr(raw_headers, "getlist"):
+
+            cookies = raw_headers.getlist(
+                "Set-Cookie"
+            )
+
+            if cookies:
+                return cookies
+
+        if hasattr(raw_headers, "get_all"):
+
+            cookies = raw_headers.get_all(
+                "Set-Cookie"
+            )
+
+            if cookies:
+                return cookies
+
+    except Exception:
+        pass
+
+
+    cookie_header = response.headers.get(
+        "Set-Cookie"
+    )
+
+    if cookie_header:
+        return [cookie_header]
+
+    return []
+
+
+def collect_selected_headers(response):
+    """
+    Collect response headers used by CyberRecon's
+    passive security-analysis rules.
+    """
+
+    selected_header_names = [
+        "Server",
+        "Content-Type",
+        "X-Powered-By",
+
+        "Content-Security-Policy",
+        "Content-Security-Policy-Report-Only",
+
+        "Strict-Transport-Security",
+
+        "X-Frame-Options",
+        "X-Content-Type-Options",
+
+        "Referrer-Policy",
+        "Permissions-Policy",
+
+        "Cross-Origin-Opener-Policy",
+        "Cross-Origin-Resource-Policy",
+        "Cross-Origin-Embedder-Policy",
+
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials",
+
+        "Cache-Control",
+        "Pragma",
+
+        "Set-Cookie",
+    ]
+
+
+    selected_headers = {}
+
+
+    for header_name in selected_header_names:
+
+        selected_headers[
+            header_name
+        ] = response.headers.get(
+            header_name,
+            "Not present",
+        )
+
+
+    return selected_headers
+
+
 def run_reconnaissance(
     target,
     allow_http_fallback=False,
 ):
     """
-    Perform basic passive reconnaissance against
-    an authorized web target.
+    Perform passive reconnaissance against an
+    authorized web target.
     """
 
     parsed_target = urlparse(target)
@@ -161,6 +270,7 @@ def run_reconnaissance(
     hostname = parsed_target.hostname
 
     ip_address = resolve_ip(hostname)
+
 
     # Stop early when DNS resolution fails.
     if not ip_address:
@@ -171,16 +281,18 @@ def run_reconnaissance(
             None,
             "DNS Resolution Failed",
             (
-                "CyberRecon could not resolve the "
-                "target hostname."
+                "CyberRecon could not resolve "
+                "the target hostname."
             ),
         )
+
 
     fallback_used = False
 
     request_target = target
 
     start_time = time.perf_counter()
+
 
     try:
 
@@ -195,11 +307,13 @@ def run_reconnaissance(
             requests.exceptions.ConnectionError,
         ) as first_error:
 
-            # If the user entered only a hostname,
-            # CyberRecon first attempts HTTPS.
+            # When the user entered only a hostname,
+            # CyberRecon initially tries HTTPS.
             #
-            # If HTTPS is unavailable, HTTP may be
-            # attempted as a fallback.
+            # HTTP fallback is allowed only when the
+            # original input did not explicitly request
+            # HTTPS.
+
             if (
                 allow_http_fallback
                 and request_target.startswith(
@@ -209,7 +323,9 @@ def run_reconnaissance(
 
                 request_target = (
                     "http://"
-                    + request_target[len("https://"):]
+                    + request_target[
+                        len("https://"):
+                    ]
                 )
 
                 response = perform_request(
@@ -221,95 +337,107 @@ def run_reconnaissance(
             else:
                 raise first_error
 
+
         end_time = time.perf_counter()
 
+
         response_time = round(
-            (end_time - start_time) * 1000,
+            (
+                end_time
+                - start_time
+            )
+            * 1000,
             2,
         )
 
+
         final_url = response.url
+
 
         final_scheme = urlparse(
             final_url
         ).scheme.lower()
 
+
         response_text = response.text
+
+
+        selected_headers = (
+            collect_selected_headers(
+                response
+            )
+        )
+
+
+        set_cookies = (
+            get_set_cookie_headers(
+                response
+            )
+        )
+
 
         return {
             "target": target,
+
             "domain": hostname,
+
             "ip_address": ip_address,
+
             "reachable": True,
-            "status_code": response.status_code,
-            "final_url": final_url,
+
+            "status_code":
+                response.status_code,
+
+            "final_url":
+                final_url,
+
             "https_enabled": (
                 final_scheme == "https"
             ),
-            "response_time": response_time,
-            "page_title": get_page_title(
-                response_text
-            ),
-            "server": response.headers.get(
-                "Server",
-                "Not disclosed",
-            ),
-            "content_type": response.headers.get(
-                "Content-Type",
-                "Not disclosed",
-            ),
-            "redirect_count": len(
-                response.history
-            ),
-            "fallback_used": fallback_used,
-            "error_type": None,
-            "error_message": None,
 
-            "headers": {
+            "response_time":
+                response_time,
 
-                "Server":
-                    response.headers.get(
-                        "Server",
-                        "Not present",
-                    ),
+            "page_title":
+                get_page_title(
+                    response_text
+                ),
 
-                "Content-Type":
-                    response.headers.get(
-                        "Content-Type",
-                        "Not present",
-                    ),
+            "server":
+                response.headers.get(
+                    "Server",
+                    "Not disclosed",
+                ),
 
-                "X-Powered-By":
-                    response.headers.get(
-                        "X-Powered-By",
-                        "Not present",
-                    ),
+            "content_type":
+                response.headers.get(
+                    "Content-Type",
+                    "Not disclosed",
+                ),
 
-                "Content-Security-Policy":
-                    response.headers.get(
-                        "Content-Security-Policy",
-                        "Not present",
-                    ),
+            "redirect_count":
+                len(
+                    response.history
+                ),
 
-                "Strict-Transport-Security":
-                    response.headers.get(
-                        "Strict-Transport-Security",
-                        "Not present",
-                    ),
+            "fallback_used":
+                fallback_used,
 
-                "X-Frame-Options":
-                    response.headers.get(
-                        "X-Frame-Options",
-                        "Not present",
-                    ),
+            "error_type":
+                None,
 
-                "X-Content-Type-Options":
-                    response.headers.get(
-                        "X-Content-Type-Options",
-                        "Not present",
-                    ),
-            },
+            "error_message":
+                None,
+
+            "headers":
+                selected_headers,
+
+            # Kept separately so later security rules
+            # can safely inspect individual cookies.
+            "set_cookies":
+                set_cookies,
         }
+
 
     except requests.exceptions.Timeout:
 
@@ -324,6 +452,7 @@ def run_reconnaissance(
             ),
         )
 
+
     except requests.exceptions.SSLError:
 
         return failure_result(
@@ -332,10 +461,11 @@ def run_reconnaissance(
             ip_address,
             "TLS/SSL Error",
             (
-                "CyberRecon could not establish a "
-                "valid TLS/SSL connection."
+                "CyberRecon could not establish "
+                "a valid TLS/SSL connection."
             ),
         )
+
 
     except requests.exceptions.TooManyRedirects:
 
@@ -350,6 +480,7 @@ def run_reconnaissance(
             ),
         )
 
+
     except requests.exceptions.ConnectionError:
 
         return failure_result(
@@ -358,10 +489,11 @@ def run_reconnaissance(
             ip_address,
             "Connection Failed",
             (
-                "CyberRecon could not establish a "
-                "connection to the target."
+                "CyberRecon could not establish "
+                "a connection to the target."
             ),
         )
+
 
     except requests.exceptions.RequestException:
 
