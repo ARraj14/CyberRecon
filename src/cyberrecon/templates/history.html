@@ -30,10 +30,17 @@
     <div class="nav-actions">
 
         <a
-            href="{{ url_for('dashboard') }}"
+            href="{{ url_for('home') }}"
             class="nav-link"
         >
-            Dashboard
+            New Assessment
+        </a>
+
+        <a
+            href="{{ url_for('history') }}"
+            class="nav-link"
+        >
+            Scan History
         </a>
 
         <a
@@ -43,8 +50,39 @@
             Compare
         </a>
 
+        {% if current_user_id %}
+
+            <span class="nav-user">
+                {{ current_username }}
+            </span>
+
+            <a
+                href="{{ url_for('logout') }}"
+                class="nav-link"
+            >
+                Logout
+            </a>
+
+        {% else %}
+
+            <a
+                href="{{ url_for('login') }}"
+                class="nav-link"
+            >
+                Login
+            </a>
+
+            <a
+                href="{{ url_for('register') }}"
+                class="nav-link"
+            >
+                Register
+            </a>
+
+        {% endif %}
+
         <div class="nav-status">
-            SCAN HISTORY
+            ANALYTICS DASHBOARD
         </div>
 
     </div>

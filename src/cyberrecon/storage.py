@@ -3,14 +3,15 @@ import sqlite3
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 DATA_DIRECTORY = PROJECT_ROOT / "data"
+
 DATABASE_PATH = DATA_DIRECTORY / "cyberrecon.db"
 
 
 def get_connection():
     """
-    Create and return a connection to the
-    CyberRecon SQLite database.
+    Create and return a SQLite database connection.
     """
 
     DATA_DIRECTORY.mkdir(
@@ -33,57 +34,138 @@ def get_connection():
 
 def initialize_database():
     """
-    Create the required database tables
-    if they do not already exist.
+    Create all required CyberRecon database
+    tables if they do not already exist.
     """
 
     with get_connection() as connection:
 
-        connection.executescript(
+        # -------------------------------------------------
+        # USERS
+        # -------------------------------------------------
+
+        connection.execute(
             """
-            CREATE TABLE IF NOT EXISTS scans (
+            CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-                scan_id TEXT UNIQUE NOT NULL,
-                target TEXT NOT NULL,
-                started_at TEXT NOT NULL,
+                username TEXT
+                    NOT NULL
+                    UNIQUE
+                    COLLATE NOCASE,
 
-                duration_ms REAL,
-                checks_performed INTEGER DEFAULT 0,
+                email TEXT
+                    NOT NULL
+                    UNIQUE
+                    COLLATE NOCASE,
 
-                recon_status TEXT,
-                analysis_status TEXT,
+                password_hash TEXT
+                    NOT NULL,
 
-                domain TEXT,
-                ip_address TEXT,
-                final_url TEXT,
-                http_status TEXT,
-
-                https_enabled INTEGER,
-
-                response_time TEXT,
-                redirect_count INTEGER,
-
-                page_title TEXT,
-                server TEXT,
-                content_type TEXT,
-
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
+                created_at TEXT
+                    NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
 
 
+        # -------------------------------------------------
+        # SCANS
+        # -------------------------------------------------
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            user_id INTEGER,
+
+            scan_id TEXT
+                NOT NULL
+                UNIQUE,
+
+            target TEXT
+                NOT NULL,
+
+            started_at TEXT,
+            duration_ms INTEGER,
+            checks_performed INTEGER,
+            recon_status TEXT,
+            analysis_status TEXT,
+            domain TEXT,
+            ip_address TEXT,
+            final_url TEXT,
+            http_status INTEGER,
+            https_enabled INTEGER,
+            response_time REAL,
+            redirect_count INTEGER,
+            page_title TEXT,
+            server TEXT,
+            content_type TEXT,
+
+            created_at TEXT
+                NOT NULL
+                DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+            )
+            """
+        )
+        
+        scan_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(scans)"
+            ).fetchall()
+        }
+
+        if "user_id" not in scan_columns:
+
+            connection.execute(
+                """
+                ALTER TABLE scans
+                ADD COLUMN user_id INTEGER
+                REFERENCES users(id)
+                """
+            )
+
+
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+                idx_scans_user
+            ON scans(user_id)
+            """
+        )
+
+
+        # -------------------------------------------------
+        # FINDINGS
+        # -------------------------------------------------
+
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS findings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-                scan_database_id INTEGER NOT NULL,
+                scan_database_id INTEGER
+                    NOT NULL,
 
                 finding_code TEXT,
+
                 name TEXT,
+
                 category TEXT,
+
                 severity TEXT,
 
                 evidence TEXT,
+
                 description TEXT,
+
                 recommendation TEXT,
 
                 FOREIGN KEY (
@@ -91,30 +173,205 @@ def initialize_database():
                 )
                 REFERENCES scans(id)
                 ON DELETE CASCADE
-            );
-
-
-            CREATE INDEX IF NOT EXISTS
-            idx_findings_scan
-            ON findings(scan_database_id);
+            )
             """
         )
 
 
-def save_assessment(assessment):
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+                idx_findings_scan
+            ON findings (
+                scan_database_id
+            )
+            """
+        )
+
+
+# =========================================================
+# USER FUNCTIONS
+# =========================================================
+
+
+def create_user(
+    username,
+    email,
+    password_hash,
+):
     """
-    Save one assessment and its findings.
+    Create a CyberRecon user account.
     """
 
-    metadata = assessment["metadata"]
-    recon = assessment["recon"]
-    findings = assessment["findings"]
+    with get_connection() as connection:
+
+        cursor = connection.execute(
+            """
+            INSERT INTO users (
+                username,
+                email,
+                password_hash
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                username.strip(),
+                email.strip().lower(),
+                password_hash,
+            ),
+        )
+
+        return cursor.lastrowid
+
+
+def get_user_by_username(username):
+    """
+    Find a user using their username.
+    """
+
+    with get_connection() as connection:
+
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                username,
+                email,
+                password_hash,
+                created_at
+
+            FROM users
+
+            WHERE username = ?
+                COLLATE NOCASE
+            """,
+            (
+                username.strip(),
+            ),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(row)
+
+
+def get_user_by_email(email):
+    """
+    Find a user using their email address.
+    """
+
+    with get_connection() as connection:
+
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                username,
+                email,
+                password_hash,
+                created_at
+
+            FROM users
+
+            WHERE email = ?
+                COLLATE NOCASE
+            """,
+            (
+                email.strip().lower(),
+            ),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(row)
+
+
+def get_user_by_id(user_id):
+    """
+    Find a user using their database ID.
+
+    Password hashes are intentionally excluded
+    from this function.
+    """
+
+    with get_connection() as connection:
+
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                username,
+                email,
+                created_at
+
+            FROM users
+
+            WHERE id = ?
+            """,
+            (
+                user_id,
+            ),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(row)
+
+
+# =========================================================
+# ASSESSMENT STORAGE
+# =========================================================
+
+
+def save_assessment(
+    assessment,
+    user_id,
+):
+    """
+    Save a completed or failed CyberRecon
+    assessment and its findings.
+    """
+
+    metadata = assessment.get(
+        "metadata",
+        {},
+    )
+
+    recon = assessment.get(
+        "recon",
+        {},
+    )
+
+    findings = assessment.get(
+        "findings",
+        [],
+    )
+
+    target = assessment.get(
+        "target",
+        "",
+    )
+
+
+    https_enabled = recon.get(
+        "https_enabled"
+    )
+
+    if https_enabled is not None:
+        https_enabled = int(
+            bool(https_enabled)
+        )
+
 
     with get_connection() as connection:
 
         cursor = connection.execute(
             """
             INSERT INTO scans (
+                user_id,
                 scan_id,
                 target,
                 started_at,
@@ -133,54 +390,47 @@ def save_assessment(assessment):
                 server,
                 content_type
             )
+
             VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             (
-                metadata["scan_id"],
-                assessment["target"],
-                metadata["started_at"],
-                metadata["duration_ms"],
-                metadata["checks_performed"],
-                metadata["recon_status"],
-                metadata["analysis_status"],
+                user_id,
+                metadata.get("scan_id"),
+                target,
+                metadata.get("started_at"),
+                metadata.get("duration_ms"),
+                metadata.get("checks_performed"),
+                metadata.get("recon_status"),
+                metadata.get("analysis_status"),
                 recon.get("domain"),
                 recon.get("ip_address"),
                 recon.get("final_url"),
-                str(
-                    recon.get(
-                        "status_code",
-                        "Unavailable",
-                    )
-                ),
-                int(
-                    bool(
-                        recon.get(
-                            "https_enabled"
-                        )
-                    )
-                ),
-                str(
-                    recon.get(
-                        "response_time",
-                        "Unavailable",
-                    )
-                ),
-                recon.get(
-                    "redirect_count",
-                    0,
-                ),
+                recon.get("status_code"),
+                https_enabled,
+                recon.get("response_time"),
+                recon.get("redirect_count"),
                 recon.get("page_title"),
                 recon.get("server"),
                 recon.get("content_type"),
             ),
         )
 
-        scan_database_id = cursor.lastrowid
+        scan_database_id = (
+            cursor.lastrowid
+        )
+
 
         for finding in findings:
+
+            finding_code = (
+                finding.get("id")
+                or finding.get(
+                    "finding_code"
+                )
+            )
 
             connection.execute(
                 """
@@ -194,44 +444,266 @@ def save_assessment(assessment):
                     description,
                     recommendation
                 )
+
                 VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?
                 )
                 """,
                 (
                     scan_database_id,
-                    finding["id"],
-                    finding["name"],
-                    finding["category"],
-                    finding["severity"],
-                    finding["evidence"],
-                    finding["description"],
-                    finding["recommendation"],
+                    finding_code,
+                    finding.get("name"),
+                    finding.get(
+                        "category"
+                    ),
+                    finding.get(
+                        "severity"
+                    ),
+                    finding.get(
+                        "evidence"
+                    ),
+                    finding.get(
+                        "description"
+                    ),
+                    finding.get(
+                        "recommendation"
+                    ),
                 ),
             )
 
 
-def get_scan_history(limit=50):
-    """
-    Return recent stored assessments.
-    """
+# =========================================================
+# SCAN HISTORY
+# =========================================================
+
+
+def get_scan_history(
+    user_id,
+    limit=50,
+):
 
     with get_connection() as connection:
 
         rows = connection.execute(
             """
             SELECT
-                scans.id,
-                scans.scan_id,
-                scans.target,
-                scans.started_at,
-                scans.duration_ms,
-                scans.checks_performed,
-                scans.recon_status,
-                scans.analysis_status,
-                scans.http_status,
-                scans.https_enabled,
+                scans.*,
 
+                COUNT(findings.id)
+                    AS total_findings,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN findings.severity = 'High'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS high_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN findings.severity = 'Medium'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS medium_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN findings.severity = 'Low'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS low_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN findings.severity = 'Info'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS info_count
+
+            FROM scans
+
+            LEFT JOIN findings
+                ON findings.scan_database_id
+                = scans.id
+
+            WHERE scans.user_id = ?
+
+            GROUP BY scans.id
+
+            ORDER BY scans.id DESC
+
+            LIMIT ?
+            """,
+            (
+                user_id,
+                limit,
+            ),
+        ).fetchall()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
+
+
+def get_scan_by_id(
+    scan_id,
+    user_id,
+):
+
+    with get_connection() as connection:
+
+        scan = connection.execute(
+            """
+            SELECT *
+            FROM scans
+
+            WHERE scan_id = ?
+              AND user_id = ?
+            """,
+            (
+                scan_id,
+                user_id,
+            ),
+        ).fetchone()
+
+
+        if scan is None:
+            return None
+
+
+        findings = connection.execute(
+            """
+            SELECT
+                finding_code,
+                name,
+                category,
+                severity,
+                evidence,
+                description,
+                recommendation
+
+            FROM findings
+
+            WHERE scan_database_id = ?
+
+            ORDER BY id ASC
+            """,
+            (
+                scan["id"],
+            ),
+        ).fetchall()
+
+
+    return {
+        "scan": dict(scan),
+
+        "findings": [
+            dict(finding)
+            for finding in findings
+        ],
+    }
+
+
+def get_completed_scans(
+    user_id,
+    limit=100,
+):
+
+    with get_connection() as connection:
+
+        rows = connection.execute(
+            """
+            SELECT
+                scan_id,
+                target,
+                started_at,
+                domain,
+                analysis_status
+
+            FROM scans
+
+            WHERE analysis_status = 'Completed'
+              AND user_id = ?
+
+            ORDER BY id DESC
+
+            LIMIT ?
+            """,
+            (
+                user_id,
+                limit,
+            ),
+        ).fetchall()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
+
+
+# =========================================================
+# DASHBOARD ANALYTICS
+# =========================================================
+
+
+def get_dashboard_analytics(user_id):
+
+    with get_connection() as connection:
+
+        overview = connection.execute(
+            """
+            SELECT
+                COUNT(*) AS total_scans,
+
+                COUNT(
+                    DISTINCT target
+                ) AS unique_targets,
+
+                SUM(
+                    CASE
+                        WHEN recon_status = 'Completed'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS successful_scans,
+
+                SUM(
+                    CASE
+                        WHEN recon_status = 'Failed'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS failed_scans
+
+            FROM scans
+
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+
+        severity = connection.execute(
+            """
+            SELECT
                 COUNT(findings.id)
                     AS total_findings,
 
@@ -270,178 +742,12 @@ def get_scan_history(limit=50):
             FROM scans
 
             LEFT JOIN findings
-                ON scans.id =
-                findings.scan_database_id
+                ON findings.scan_database_id
+                = scans.id
 
-            GROUP BY scans.id
-
-            ORDER BY scans.id DESC
-
-            LIMIT ?
+            WHERE scans.user_id = ?
             """,
-            (limit,),
-        ).fetchall()
-
-    return [
-        dict(row)
-        for row in rows
-    ]
-    
-def get_scan_by_id(scan_id):
-    """
-    Return one stored CyberRecon assessment
-    together with all of its findings.
-    """
-
-    with get_connection() as connection:
-
-        scan = connection.execute(
-            """
-            SELECT *
-            FROM scans
-            WHERE scan_id = ?
-            """,
-            (scan_id,),
-        ).fetchone()
-
-        if scan is None:
-            return None
-
-        findings = connection.execute(
-            """
-            SELECT
-                finding_code,
-                name,
-                category,
-                severity,
-                evidence,
-                description,
-                recommendation
-            FROM findings
-            WHERE scan_database_id = ?
-            ORDER BY id
-            """,
-            (scan["id"],),
-        ).fetchall()
-
-    return {
-        "scan": dict(scan),
-        "findings": [
-            dict(finding)
-            for finding in findings
-        ],
-    }
-        
-def get_completed_scans(limit=100):
-    """
-    Return successful stored assessments
-    that can be used for comparison.
-    """
-
-    with get_connection() as connection:
-
-        rows = connection.execute(
-            """
-            SELECT
-                scan_id,
-                target,
-                started_at,
-                domain,
-                analysis_status
-
-            FROM scans
-
-            WHERE analysis_status = 'Completed'
-
-            ORDER BY id DESC
-
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-
-    return [
-        dict(row)
-        for row in rows
-    ]
-    
-def get_dashboard_analytics():
-    """
-    Build summary statistics for the CyberRecon
-    analytics dashboard.
-    """
-
-    with get_connection() as connection:
-
-        overview = connection.execute(
-            """
-            SELECT
-                COUNT(*) AS total_scans,
-
-                COUNT(
-                    DISTINCT target
-                ) AS unique_targets,
-
-                SUM(
-                    CASE
-                        WHEN recon_status = 'Completed'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS successful_scans,
-
-                SUM(
-                    CASE
-                        WHEN recon_status = 'Failed'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS failed_scans
-
-            FROM scans
-            """
-        ).fetchone()
-
-
-        severity = connection.execute(
-            """
-            SELECT
-                COUNT(*) AS total_findings,
-
-                SUM(
-                    CASE
-                        WHEN severity = 'High'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS high_count,
-
-                SUM(
-                    CASE
-                        WHEN severity = 'Medium'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS medium_count,
-
-                SUM(
-                    CASE
-                        WHEN severity = 'Low'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS low_count,
-
-                SUM(
-                    CASE
-                        WHEN severity = 'Info'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS info_count
-
-            FROM findings
-            """
+            (user_id,),
         ).fetchone()
 
 
@@ -456,34 +762,45 @@ def get_dashboard_analytics():
 
             FROM scans
 
+            WHERE user_id = ?
+
             ORDER BY id DESC
 
             LIMIT 5
-            """
+            """,
+            (user_id,),
         ).fetchall()
 
 
         common_findings = connection.execute(
             """
             SELECT
-                finding_code,
-                name,
-                severity,
+                findings.finding_code,
+                findings.name,
+                findings.severity,
+
                 COUNT(*) AS occurrence_count
 
             FROM findings
 
+            JOIN scans
+                ON scans.id
+                = findings.scan_database_id
+
+            WHERE scans.user_id = ?
+
             GROUP BY
-                finding_code,
-                name,
-                severity
+                findings.finding_code,
+                findings.name,
+                findings.severity
 
             ORDER BY
                 occurrence_count DESC,
-                finding_code ASC
+                findings.finding_code ASC
 
             LIMIT 5
-            """
+            """,
+            (user_id,),
         ).fetchall()
 
 
@@ -492,8 +809,6 @@ def get_dashboard_analytics():
     severity_data = dict(severity)
 
 
-    # SQLite SUM() may return None when
-    # the database contains no matching rows.
     for key in (
         "successful_scans",
         "failed_scans",
@@ -515,12 +830,12 @@ def get_dashboard_analytics():
         )
 
 
-    total_scans = overview_data[
-        "total_scans"
-    ]
+    total_scans = (
+        overview_data["total_scans"]
+    )
 
 
-    if total_scans > 0:
+    if total_scans:
 
         success_rate = round(
             (
@@ -534,15 +849,19 @@ def get_dashboard_analytics():
         )
 
     else:
+
         success_rate = 0
 
 
     return {
-        "overview": overview_data,
+        "overview":
+            overview_data,
 
-        "severity": severity_data,
+        "severity":
+            severity_data,
 
-        "success_rate": success_rate,
+        "success_rate":
+            success_rate,
 
         "recent_scans": [
             dict(scan)
@@ -551,6 +870,7 @@ def get_dashboard_analytics():
 
         "common_findings": [
             dict(finding)
-            for finding in common_findings
+            for finding
+            in common_findings
         ],
     }
