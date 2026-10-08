@@ -1,6 +1,4 @@
-from pathlib import Path
-
-readme = r"""# CYBERRECON
+# CYBERRECON
 
 ## Web-Based Vulnerability Assessment and Reconnaissance System
 
@@ -756,8 +754,3 @@ CyberRecon `v1.0.0` includes the complete final-stage passive assessment workflo
 
 CyberRecon is an educational cybersecurity project. Findings are generated from observable passive evidence and should be independently reviewed before being used for production security decisions.
 """
-
-out = Path("/mnt/data/README.md")
-out.write_text(readme, encoding="utf-8")
-print(f"Created: {out}")
-print(f"Lines: {len(readme.splitlines())}")

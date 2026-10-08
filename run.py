@@ -1,4 +1,3 @@
-cat > run.py <<'EOF'
 """
 CyberRecon local development launcher.
 
@@ -31,4 +30,3 @@ if __name__ == "__main__":
         port=5000,
         debug=debug_enabled,
     )
-EOF
