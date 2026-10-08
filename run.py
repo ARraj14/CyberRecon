@@ -1,7 +1,8 @@
+cat > run.py <<'EOF'
 """
 CyberRecon local development launcher.
 
-Use this file only for development.
+Use this file only for local development.
 
 Production deployments should use:
 
@@ -17,11 +18,10 @@ app = create_app()
 
 
 if __name__ == "__main__":
-
     debug_enabled = (
         os.environ.get(
             "CYBERRECON_DEBUG",
-            "1",
+            "0",
         )
         == "1"
     )
@@ -31,3 +31,4 @@ if __name__ == "__main__":
         port=5000,
         debug=debug_enabled,
     )
+EOF
