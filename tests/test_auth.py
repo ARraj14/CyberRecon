@@ -339,7 +339,7 @@ def test_logout_clears_session(
     )
 
 
-    response = client.get(
+    response = client.post(
         "/logout"
     )
 

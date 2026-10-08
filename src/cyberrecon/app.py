@@ -686,8 +686,26 @@ def create_app(test_config=None):
     # LOGOUT
     # =====================================================
 
-    @app.route("/logout")
+    @app.route(
+        "/logout",
+        methods=[
+            "GET",
+            "POST",
+        ],
+    )
+    @login_required
     def logout():
+
+        # GET only renders the confirmation page.
+        # Session state is changed only by POST.
+        # Global POST CSRF middleware validates the
+        # token before this route executes.
+
+        if request.method == "GET":
+
+            return render_template(
+                "logout.html"
+            )
 
         session.clear()
 

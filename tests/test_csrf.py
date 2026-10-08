@@ -543,3 +543,127 @@ def test_csrf_token_can_be_sent_as_header(
         b"Account created successfully"
         in response.data
     )
+
+
+
+def test_logout_get_does_not_clear_session(
+    app,
+    client,
+):
+
+    enable_csrf(app)
+
+    register_with_csrf(
+        client
+    )
+
+    login_with_csrf(
+        client
+    )
+
+    response = client.get(
+        "/logout"
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        b"Confirm Logout"
+        in response.data
+    )
+
+    with client.session_transaction() as session:
+
+        assert session.get(
+            "user_id"
+        )
+
+        assert session.get(
+            "username"
+        )
+
+
+def test_logout_post_without_csrf_fails(
+    app,
+    client,
+):
+
+    enable_csrf(app)
+
+    register_with_csrf(
+        client
+    )
+
+    login_with_csrf(
+        client
+    )
+
+    response = client.post(
+        "/logout",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+
+    assert (
+        b"Invalid or missing CSRF token"
+        in response.data
+    )
+
+    with client.session_transaction() as session:
+
+        assert session.get(
+            "user_id"
+        )
+
+
+def test_logout_post_with_valid_csrf_clears_session(
+    app,
+    client,
+):
+
+    enable_csrf(app)
+
+    register_with_csrf(
+        client
+    )
+
+    login_with_csrf(
+        client
+    )
+
+    token = get_csrf_token(
+        client,
+        "/logout",
+    )
+
+    response = client.post(
+        "/logout",
+
+        data={
+            "csrf_token":
+                token,
+        },
+
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+
+    assert response.headers[
+        "Location"
+    ].endswith(
+        "/"
+    )
+
+    with client.session_transaction() as session:
+
+        assert (
+            "user_id"
+            not in session
+        )
+
+        assert (
+            "username"
+            not in session
+        )

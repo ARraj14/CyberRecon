@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Logout | CyberRecon
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <style>
+        .auth-container {
+            width: min(460px, 92%);
+            margin: 80px auto;
+        }
+
+        .auth-card {
+            padding: 32px;
+            border: 1px solid #1d3448;
+            border-radius: 12px;
+            background: rgba(8, 17, 28, 0.9);
+        }
+
+        .auth-card h1 {
+            margin-top: 0;
+        }
+
+        .logout-actions {
+            display: grid;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .logout-actions button,
+        .logout-actions a {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 13px;
+            border-radius: 7px;
+            text-align: center;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .logout-actions button {
+            border: 0;
+            cursor: pointer;
+            background: #45d6a4;
+            color: #06110d;
+        }
+
+        .logout-actions a {
+            border: 1px solid #294258;
+            background: #08131f;
+            color: #a9bacb;
+        }
+
+        .logout-note {
+            margin-top: 18px;
+            color: #8295a8;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+
+<body>
+
+<nav class="navbar">
+
+    <div class="brand">
+        Cyber<span>Recon</span>
+    </div>
+
+    <div class="nav-actions">
+
+        <a
+            href="{{ url_for('home') }}"
+            class="nav-link"
+        >
+            Home
+        </a>
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="nav-link"
+        >
+            Dashboard
+        </a>
+
+        <span class="nav-user">
+            {{ current_username }}
+        </span>
+
+    </div>
+
+</nav>
+
+
+<main class="auth-container">
+
+    <div class="auth-card">
+
+        <div class="tag">
+            SESSION SECURITY
+        </div>
+
+        <h1>
+            Confirm
+            <span>Logout.</span>
+        </h1>
+
+        <p class="subtitle">
+            End the current CyberRecon session?
+        </p>
+
+        <form
+            method="POST"
+            action="{{ url_for('logout') }}"
+            class="logout-actions"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <button type="submit">
+                Confirm Logout
+            </button>
+
+            <a href="{{ url_for('dashboard') }}">
+                Cancel
+            </a>
+
+        </form>
+
+        <p class="logout-note">
+            Logout is completed only through a
+            CSRF-protected POST request. Opening this
+            page does not modify the authenticated session.
+        </p>
+
+    </div>
+
+</main>
+
+</body>
+
+</html>

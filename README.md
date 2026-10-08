@@ -159,7 +159,7 @@ CyberRecon includes account-based authentication using Flask sessions and Werkze
 Authentication features include:
 
 - user registration
-- login and logout
+- login and CSRF-protected logout
 - password hashing
 - protected routes
 - safe post-login redirects
@@ -427,6 +427,7 @@ CyberRecon/
 │           ├── history.html
 │           ├── index.html
 │           ├── login.html
+│           ├── logout.html
 │           ├── register.html
 │           ├── report.html
 │           ├── results.html
@@ -650,7 +651,7 @@ These utilities check project structure, Python compilation, automated tests, ro
 | `/` | Homepage / target submission |
 | `/register` | User registration |
 | `/login` | Login |
-| `/logout` | Logout |
+| `/logout` | Logout confirmation and CSRF-protected session termination |
 | `/scan` | Run an assessment |
 | `/dashboard` | User analytics |
 | `/history` | Scan history |
@@ -753,4 +754,3 @@ CyberRecon `v1.0.0` includes the complete final-stage passive assessment workflo
 ## Disclaimer
 
 CyberRecon is an educational cybersecurity project. Findings are generated from observable passive evidence and should be independently reviewed before being used for production security decisions.
-"""
