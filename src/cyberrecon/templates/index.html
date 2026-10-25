@@ -1,186 +1,1845 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "home" %}
 
-<head>
-    <meta charset="UTF-8">
+{% block title %}CyberRecon | Passive Web Security Assessment & Configuration Scanner{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is passive security reconnaissance legal?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, when conducted against systems you own or have explicit authorization to assess. CyberRecon performs strictly non-intrusive evaluations by requesting standard HTTP headers, inspecting public TLS certificates, and querying authoritative DNS records without injecting exploit payloads or bypassing access controls."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What counts as strictly passive evaluation?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Passive reconnaissance does not probe for software vulnerabilities, inject malicious payloads, brute-force credentials, fuzz URI paths, or stress server infrastructure. It observes public responses and configurations returned in standard HTTP/HTTPS handshakes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are assessment targets or scan results stored externally?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. CyberRecon operates as a self-contained application. All scan records, configuration audits, and historical diffs are stored exclusively in your local database, isolated strictly to your authenticated user account."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why was my target hostname or IP address blocked?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "CyberRecon enforces mandatory Server-Side Request Forgery (SSRF) boundary safeguards. Requests to loopback addresses (127.0.0.1, localhost), private RFC 1918 subnets (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local ranges (169.254.0.0/16), and cloud metadata endpoints are unconditionally blocked before any socket connection is opened."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How is the security posture grade and numerical score calculated?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Every assessment begins at 100 points. Penalties are weighted by finding severity: Critical findings deduct 25 points, High findings deduct 15 points, Medium deduct 10, Low deduct 5, and Info findings do not deduct points. Letter grades map cleanly: A (90-100), B (80-89), C (70-79), D (60-69), and F (below 60)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there an automated API or CI/CD integration?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "CyberRecon's underlying scanner is packaged as an extensible Python module with structured JSON output, suitable for command-line scripting and pipeline verification against staging web endpoints."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
 
-    <title>
-        CyberRecon | Web Security Assessment
-    </title>
+{% block content %}
+    <main class="container">
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-</head>
+        <!-- =====================================================
+             HERO SECTION: TWO-COLUMN DIGITAL RECON LANDSCAPE
+             ===================================================== -->
+        <section class="hero-section" aria-labelledby="hero-title">
+            <div class="hero-grid">
 
+                <!-- LEFT: Editorial headline, description, scope, and form -->
+                <div class="hero-content">
+                    <div class="hero-eyebrow">
+                        <span class="tag-pulse" aria-hidden="true"></span>
+                        PASSIVE RECONNAISSANCE &amp; SECURITY ANALYSIS
+                    </div>
 
-<body>
+                    <h1 id="hero-title">
+                        Discover. Analyze.<br>
+                        <span class="hero-gradient-text">Understand.</span>
+                    </h1>
 
-<nav class="navbar">
+                    <p class="hero-lead">
+                        Non-intrusive security posture and configuration analysis for authorized web targets. Detect vulnerabilities without exploit payloads.
+                    </p>
 
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
+                    {% if error %}
+                    <div class="error-message" role="alert">
+                        {{ error }}
+                    </div>
+                    {% endif %}
 
-    <div class="nav-actions">
+                    <!-- Form preserving exact action, method, CSRF, and target input attributes -->
+                    <div class="scan-panel">
+                        <form id="assessment-form" action="{{ url_for('scan') }}" method="POST" class="scan-form" novalidate>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-        {% if current_user_id %}
+                            <label for="target" class="scan-input-label">Authorized Target</label>
 
-        <a
-            href="{{ url_for('dashboard') }}"
-            class="nav-link"
-        >
-            Dashboard
-        </a>
+                            <div class="scan-input-wrapper">
+                                <span class="input-leading-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                </span>
 
-        <a
-            href="{{ url_for('history') }}"
-            class="nav-link"
-        >
-            Scan History
-        </a>
+                                <input
+                                    id="target"
+                                    name="target"
+                                    type="text"
+                                    value="{{ target or '' }}"
+                                    placeholder="example.com or https://example.com"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    required
+                                    aria-describedby="target-live-preview inline-target-error btn-disabled-reason"
+                                >
 
-        <a
-            href="{{ url_for('compare_scans') }}"
-            class="nav-link"
-        >
-            Compare
-        </a>
+                                <button type="submit" id="start-assessment-btn" class="scan-button" disabled aria-describedby="btn-disabled-reason">
+                                    <span class="btn-text">Start Assessment</span>
+                                    <svg class="button-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-spinner" aria-hidden="true"></span>
+                                </button>
+                            </div>
 
-        <span class="nav-user">
-            {{ current_username }}
-        </span>
+                            <!-- Live auto-normalized URL preview -->
+                            <div id="target-live-preview" class="target-live-preview" aria-live="polite">
+                                <span class="preview-prefix">Will scan:</span>
+                                <code id="preview-url-text" class="preview-target-url">https://...</code>
+                            </div>
 
-        <a
-            href="{{ url_for('logout') }}"
-            class="nav-link"
-        >
-            Logout
-        </a>
+                            <!-- Inline friendly validation error container -->
+                            <div id="inline-target-error" class="inline-validation-msg" role="alert" aria-live="polite">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                <span id="target-error-text">Please enter a valid hostname or HTTP/HTTPS target.</span>
+                            </div>
 
-        {% else %}
+                            <!-- Mandatory permission checkbox required to enable assessment -->
+                            <div class="auth-consent-group" id="auth-consent-container">
+                                <input type="checkbox" id="auth-consent-cb" name="auth_consent" aria-describedby="auth-consent-desc">
+                                <label for="auth-consent-cb" class="auth-consent-label" id="auth-consent-desc">
+                                    I own this target or have <strong>written permission</strong> to assess it
+                                </label>
+                                <span class="why-we-ask-tooltip" title="Defensive security auditing requires explicit authorization to comply with ethical standards and legal boundaries." tabindex="0" aria-label="Why authorization is required">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                </span>
+                            </div>
 
-        <a
-            href="{{ url_for('login') }}"
-            class="nav-link"
-        >
-            Login
-        </a>
+                            <!-- Disabled reason helper text (WCAG AA requirement) -->
+                            <div id="btn-disabled-reason" class="btn-disabled-reason" aria-live="polite">
+                                Enter an authorized target and confirm ownership or permission to launch.
+                            </div>
 
-        <a
-            href="{{ url_for('register') }}"
-            class="nav-link"
-        >
-            Register
-        </a>
+                            <!-- Helper chips below the input -->
+                            <div class="helper-chips-row">
+                                <button type="button" class="helper-chip interactive" id="btn-whats-checked" aria-haspopup="dialog" title="View the 18 passive security checks">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    What's checked? (18 rules)
+                                </button>
+                                <span class="helper-chip">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Passive only
+                                </span>
+                                <span class="helper-chip">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                    No exploitation
+                                </span>
+                            </div>
+                        </form>
+                    </div>
 
-        {% endif %}
+                    <!-- Trust microcopy: concise and single -->
+                    <div class="hero-trust-line">
+                        <svg class="trust-shield-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Authorized passive evaluation &bull; Zero exploit execution &bull; SSRF-protected</span>
+                    </div>
 
-        <div class="nav-status">
-            PASSIVE ASSESSMENT
+                    <!-- Secondary navigation links under card -->
+                    <div class="hero-secondary-links">
+                        <a href="#sample-report" class="secondary-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            View sample report
+                        </a>
+                        <span class="link-divider" aria-hidden="true">&bull;</span>
+                        <a href="#checks" class="secondary-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            18-Check Catalog &amp; Methodology
+                        </a>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Interactive Animated Demo Preview Card -->
+                <div class="hero-visual" aria-label="Interactive demo security assessment preview">
+                    <div class="scan-preview-card" id="demo-preview-card">
+                        <div class="preview-header-bar">
+                            <div class="preview-traffic-dots" aria-hidden="true">
+                                <span class="preview-dot red"></span>
+                                <span class="preview-dot yellow"></span>
+                                <span class="preview-dot green"></span>
+                            </div>
+                            <div class="preview-target-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                <span id="demo-url-display">https://demo.securecloud.app</span>
+                            </div>
+                            <div class="preview-header-actions">
+                                <button type="button" id="demo-pause-btn" class="demo-ctrl-btn" title="Pause / Play preview animation" aria-label="Pause demo animation">
+                                    <svg class="icon-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                                    <svg class="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                </button>
+                                <span class="preview-sample-label">DEMO PREVIEW &bull; SAMPLE DATA</span>
+                            </div>
+                        </div>
+
+                        <!-- Score ring and stage overview banner -->
+                        <div class="preview-score-banner">
+                            <div class="demo-ring-wrapper">
+                                <svg class="demo-score-ring" viewBox="0 0 72 72">
+                                    <circle class="score-ring-track" cx="36" cy="36" r="30"></circle>
+                                    <circle class="score-ring-fill" id="demo-score-fill" cx="36" cy="36" r="30" style="stroke-dasharray: 188.49; stroke-dashoffset: 188.49;"></circle>
+                                </svg>
+                                <div class="demo-score-center">
+                                    <span class="score-number" id="demo-score-number">84</span>
+                                    <span class="score-unit">/100</span>
+                                </div>
+                            </div>
+                            <div class="demo-score-meta">
+                                <div class="demo-score-header">
+                                    <span class="demo-grade-badge" id="demo-grade-badge">GRADE B</span>
+                                    <span class="demo-status-text" id="demo-stage-label">Passive Audit Complete</span>
+                                </div>
+                                <div class="demo-severity-chips">
+                                    <span class="sev-count-chip pass"><span class="chip-dot"></span> 15 Pass</span>
+                                    <span class="sev-count-chip high"><span class="chip-dot"></span> 1 High</span>
+                                    <span class="sev-count-chip medium"><span class="chip-dot"></span> 2 Medium</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-body" id="demo-checks-container">
+                            <div class="preview-scanner-beam" id="demo-scanner-beam" aria-hidden="true"></div>
+
+                            <!-- Row 1: TLS -->
+                            <div class="preview-item-row expandable" data-check-index="0" tabindex="0" role="button" aria-expanded="false" aria-label="TLS 1.3 Transport check details">
+                                <div class="preview-check-main">
+                                    <div class="preview-check-left">
+                                        <svg class="preview-check-icon icon-pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                        <div>
+                                            <span class="preview-check-name">TLS 1.3 Strict Transport</span>
+                                            <span class="preview-check-sub">Cipher: AES-256-GCM &bull; Valid Certificate</span>
+                                        </div>
+                                    </div>
+                                    <div class="preview-check-right">
+                                        <span class="status-badge badge-pass" id="demo-badge-0">PASS</span>
+                                        <svg class="expand-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                </div>
+                                <div class="preview-check-details">
+                                    <p><strong>Why it matters:</strong> Modern TLS 1.3 eliminates obsolete cipher suites and provides forward secrecy against decryption.</p>
+                                    <p class="remediation-line"><strong>Status:</strong> Target enforces TLS 1.3 with high-strength cryptographic keys.</p>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: CSP (High) -->
+                            <div class="preview-item-row expandable open" data-check-index="1" tabindex="0" role="button" aria-expanded="true" aria-label="Content-Security-Policy check details">
+                                <div class="preview-check-main">
+                                    <div class="preview-check-left">
+                                        <svg class="preview-check-icon icon-high" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                        <div>
+                                            <span class="preview-check-name">Content-Security-Policy</span>
+                                            <span class="preview-check-sub">Missing default-src fallback &bull; Wildcard script-src</span>
+                                        </div>
+                                    </div>
+                                    <div class="preview-check-right">
+                                        <span class="status-badge badge-high" id="demo-badge-1">HIGH</span>
+                                        <svg class="expand-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                </div>
+                                <div class="preview-check-details">
+                                    <p><strong>Why it matters:</strong> Permissive script directives permit inline code injection and Cross-Site Scripting (XSS).</p>
+                                    <p class="remediation-line"><strong>Remediation:</strong> Set <code>default-src 'self'</code> and replace wildcard origins with cryptographic nonces.</p>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: HSTS (Pass) -->
+                            <div class="preview-item-row expandable" data-check-index="2" tabindex="0" role="button" aria-expanded="false" aria-label="Strict-Transport-Security check details">
+                                <div class="preview-check-main">
+                                    <div class="preview-check-left">
+                                        <svg class="preview-check-icon icon-pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <div>
+                                            <span class="preview-check-name">Strict-Transport-Security</span>
+                                            <span class="preview-check-sub">max-age=31536000 &bull; includeSubDomains</span>
+                                        </div>
+                                    </div>
+                                    <div class="preview-check-right">
+                                        <span class="status-badge badge-pass" id="demo-badge-2">PASS</span>
+                                        <svg class="expand-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                </div>
+                                <div class="preview-check-details">
+                                    <p><strong>Why it matters:</strong> Prevents protocol downgrade attacks and cookie interception by forcing encrypted HTTPS.</p>
+                                    <p class="remediation-line"><strong>Status:</strong> Verified 1-year max-age duration with subdomains included.</p>
+                                </div>
+                            </div>
+
+                            <!-- Row 4: DNS (Pass) -->
+                            <div class="preview-item-row expandable" data-check-index="3" tabindex="0" role="button" aria-expanded="false" aria-label="DNS CAA and DMARC check details">
+                                <div class="preview-check-main">
+                                    <div class="preview-check-left">
+                                        <svg class="preview-check-icon icon-pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                        <div>
+                                            <span class="preview-check-name">DNS CAA &amp; DMARC Policy</span>
+                                            <span class="preview-check-sub">SPF validated &bull; DMARC p=reject verified</span>
+                                        </div>
+                                    </div>
+                                    <div class="preview-check-right">
+                                        <span class="status-badge badge-pass" id="demo-badge-3">PASS</span>
+                                        <svg class="expand-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                </div>
+                                <div class="preview-check-details">
+                                    <p><strong>Why it matters:</strong> CAA restricts certificate issuance authorities while DMARC prevents email identity spoofing.</p>
+                                    <p class="remediation-line"><strong>Status:</strong> Verified authorized Certificate Authorities and strict rejection policy.</p>
+                                </div>
+                            </div>
+
+                            <!-- Row 5: Cookies (Medium) -->
+                            <div class="preview-item-row expandable" data-check-index="4" tabindex="0" role="button" aria-expanded="false" aria-label="Cookie security attributes check details">
+                                <div class="preview-check-main">
+                                    <div class="preview-check-left">
+                                        <svg class="preview-check-icon icon-medium" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        <div>
+                                            <span class="preview-check-name">Cookie Security Attributes</span>
+                                            <span class="preview-check-sub">Session token lacks SameSite=Lax</span>
+                                        </div>
+                                    </div>
+                                    <div class="preview-check-right">
+                                        <span class="status-badge badge-medium" id="demo-badge-4">MEDIUM</span>
+                                        <svg class="expand-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                </div>
+                                <div class="preview-check-details">
+                                    <p><strong>Why it matters:</strong> Cookies without SameSite attributes may be automatically attached to cross-site requests.</p>
+                                    <p class="remediation-line"><strong>Remediation:</strong> Append <code>SameSite=Lax; Secure; HttpOnly</code> to all authenticated Set-Cookie headers.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-footer-strip">
+                            <span>Demonstration Showcase &bull; 18 Deterministic Rules</span>
+                            <span class="interactive-hint">Simulated Output &bull; Click finding to inspect remediation</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 1: FACTS STRIP (REPLACES SOCIAL PROOF TICKER)
+             ===================================================== -->
+        <section class="facts-strip-section" aria-label="Key technical facts">
+            <div class="facts-strip-grid">
+                <div class="fact-item">
+                    <span class="fact-number" data-count="18">18</span>
+                    <span class="fact-label">Security Checks</span>
+                    <span class="fact-sub">Standardized CWE/OWASP rules</span>
+                </div>
+                <div class="fact-item">
+                    <span class="fact-number" data-count="4">4</span>
+                    <span class="fact-label">Defensive Categories</span>
+                    <span class="fact-sub">Headers, TLS, DNS, Session</span>
+                </div>
+                <div class="fact-item">
+                    <span class="fact-badge">100%</span>
+                    <span class="fact-label">Passive Reconnaissance</span>
+                    <span class="fact-sub">Zero intrusive scan traffic</span>
+                </div>
+                <div class="fact-item">
+                    <span class="fact-badge emerald">SSRF</span>
+                    <span class="fact-label">Boundary Protected</span>
+                    <span class="fact-sub">RFC 1918 &amp; cloud guards</span>
+                </div>
+                <div class="fact-item">
+                    <span class="fact-number" data-count="0">0</span>
+                    <span class="fact-label">Exploit Payloads</span>
+                    <span class="fact-sub">No fuzzing, brute-force, or DOS</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 2: FEATURES BENTO GRID
+             ===================================================== -->
+        <section class="section bento-features-section" id="features" aria-labelledby="features-heading">
+            <div class="section-header">
+                <div class="section-tag">COMPREHENSIVE CAPABILITIES</div>
+                <h2 id="features-heading">Engineered for Defensive Rigor</h2>
+                <p class="section-desc">
+                    CyberRecon systematically inspects HTTP responses, cryptographic transport, and client isolation policies against verified industry baselines.
+                </p>
+            </div>
+
+            <div class="bento-grid">
+                <!-- Card 1: Large Featured Card (Security Headers) -->
+                <div class="bento-card bento-card-large">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <span class="bento-badge">CORE CAPABILITY</span>
+                    </div>
+                    <h3>Security Headers Hardening</h3>
+                    <p>
+                        Rigorous evaluation of CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy to harden modern browsers against clickjacking, MIME-sniffing, and cross-site scripting.
+                    </p>
+                    <div class="bento-visual-header-block">
+                        <div class="mock-header-row"><span class="hdr-key">Content-Security-Policy:</span> <span class="hdr-val">default-src 'self'; script-src 'self'</span></div>
+                        <div class="mock-header-row"><span class="hdr-key">Strict-Transport-Security:</span> <span class="hdr-val">max-age=31536000; includeSubDomains</span></div>
+                        <div class="mock-header-row"><span class="hdr-key">X-Frame-Options:</span> <span class="hdr-val">DENY</span></div>
+                        <div class="mock-header-row"><span class="hdr-key">X-Content-Type-Options:</span> <span class="hdr-val">nosniff</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: TLS & Transport -->
+                <div class="bento-card">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3>TLS &amp; Transport Encryption</h3>
+                    <p>
+                        Validates HTTPS enforcement, TLS 1.2/1.3 protocol standards, cryptographic cipher strength, and certificate chain validity without disruptive socket renegotiation.
+                    </p>
+                    <div class="bento-mini-stat">
+                        <span class="stat-highlight">TLS 1.2 / 1.3</span>
+                        <span class="stat-caption">Forward Secrecy Enforced</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: DNS & Email Auth -->
+                <div class="bento-card">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3>DNS &amp; Domain Authentication</h3>
+                    <p>
+                        Passive lookup of CAA authority records, SPF declarations, and DMARC policies to prevent fraudulent SSL issuance and domain spoofing.
+                    </p>
+                    <div class="bento-mini-stat">
+                        <span class="stat-highlight">CAA &bull; SPF &bull; DMARC</span>
+                        <span class="stat-caption">Spoofing Protection</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Cookies & Session Hygiene -->
+                <div class="bento-card">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="8" cy="9" r="1.5"></circle>
+                                <circle cx="15" cy="11" r="1.5"></circle>
+                                <circle cx="11" cy="16" r="1.5"></circle>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3>Cookies &amp; Session Hygiene</h3>
+                    <p>
+                        Comprehensive audit of Set-Cookie directives for Secure, HttpOnly, and SameSite attributes, paired with cross-origin isolation (COOP, CORP, CORS) policies.
+                    </p>
+                    <div class="bento-mini-stat">
+                        <span class="stat-highlight">SameSite=Lax; Secure</span>
+                        <span class="stat-caption">Session Theft Mitigation</span>
+                    </div>
+                </div>
+
+                <!-- Card 5: Compare Scans & Drift Tracking -->
+                <div class="bento-card">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 3h5v5"></path>
+                                <path d="M4 20L21 3"></path>
+                                <path d="M21 16v5h-5"></path>
+                                <path d="M15 15l6 6"></path>
+                                <path d="M4 4l5 5"></path>
+                            </svg>
+                        </div>
+                        <span class="bento-badge cyan">SECURITY REGRESSION</span>
+                    </div>
+                    <h3>Compare Scans &amp; Drift</h3>
+                    <p>
+                        Select any two assessments of the same target to inspect security regressions. Side-by-side delta highlighting verifies resolved issues immediately.
+                    </p>
+                    <div class="bento-diff-preview">
+                        <div class="diff-tag resolved"><span class="diff-sign">✓</span> 2 Resolved</div>
+                        <div class="diff-tag new-finding"><span class="diff-sign">+</span> 1 New Finding</div>
+                    </div>
+                </div>
+
+                <!-- Card 6: History & Trends -->
+                <div class="bento-card">
+                    <div class="bento-card-header">
+                        <div class="bento-icon-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3>History &amp; Posture Trends</h3>
+                    <p>
+                        Maintain a continuous timeline of scan records isolated to your account. Track your security posture score progression as configurations improve over time.
+                    </p>
+                    <div class="bento-mini-stat">
+                        <span class="stat-highlight">Chronological Audits</span>
+                        <span class="stat-caption">Isolated Account History</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 3: HOW IT WORKS (3 STEPS WITH CONNECTING LINE)
+             ===================================================== -->
+        <section class="section workflow-section" id="how-it-works" aria-labelledby="workflow-heading">
+            <div class="section-header">
+                <div class="section-tag">ENGINEERING METHODOLOGY</div>
+                <h2 id="workflow-heading">How CyberRecon Operates</h2>
+                <p class="section-desc">
+                    Every assessment executes within a deterministic, 3-stage passive pipeline that preserves operational integrity.
+                </p>
+            </div>
+
+            <div class="workflow-timeline">
+                <div class="timeline-connecting-line" aria-hidden="true"></div>
+
+                <div class="workflow-step-card">
+                    <div class="step-marker-wrapper">
+                        <span class="step-num">01</span>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-phase-tag">STAGE 1: BOUNDARY GUARD</div>
+                        <h3>Target Validation &amp; Boundary Guard</h3>
+                        <p>
+                            Input is normalized and validated against strict SSRF boundaries. Pre-flight DNS resolution confirms the target resolves to a public internet address, unconditionally rejecting internal RFC 1918 networks, localhost, and AWS metadata endpoints.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="workflow-step-card">
+                    <div class="step-marker-wrapper">
+                        <span class="step-num">02</span>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-phase-tag">STAGE 2: CONTROLLED PROBE</div>
+                        <h3>Passive Reconnaissance Probe</h3>
+                        <p>
+                            A non-intrusive HTTP request sequence collects server responses, TLS certificate parameters, and security headers. Automatic redirects are validated safely before being followed, maintaining strict passive discipline.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="workflow-step-card">
+                    <div class="step-marker-wrapper">
+                        <span class="step-num">03</span>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-phase-tag">STAGE 3: SYNTHESIS &amp; REMEDIATION</div>
+                        <h3>18-Rule Evaluation &amp; Remediation</h3>
+                        <p>
+                            Collected responses are evaluated against 18 deterministic security rules. You receive a letter-grade posture score, categorized findings by severity, and exact configuration snippets to remediate flaws immediately.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 4: SAMPLE REPORT PREVIEW (WITH REMEDIATION TABS)
+             ===================================================== -->
+        <section class="section sample-report-section" id="sample-report" aria-labelledby="sample-report-heading">
+            <div class="section-header">
+                <div class="section-tag">SAMPLE OUTPUT</div>
+                <h2 id="sample-report-heading">Actionable Findings with Copy-Paste Fixes</h2>
+                <p class="section-desc">
+                    Security findings include verifiable rationale and ready-to-deploy configuration directives for Nginx, Apache, and Express.
+                </p>
+            </div>
+
+            <div class="sample-report-card">
+                <!-- Summary bar -->
+                <div class="report-summary-bar">
+                    <div class="report-grade-box">
+                        <div class="report-score-ring">
+                            <span class="grade-letter">B</span>
+                            <span class="score-fraction">84/100</span>
+                        </div>
+                        <div class="report-target-meta">
+                            <span class="target-title">api.cloud-services.io</span>
+                            <span class="target-audit-time">18 checks evaluated &bull; 0 exploit payloads &bull; Passive analysis</span>
+                        </div>
+                    </div>
+                    <div class="report-severity-bar">
+                        <div class="sev-bar-item"><span class="sev-pill pass">15 Pass</span></div>
+                        <div class="sev-bar-item"><span class="sev-pill high">1 High</span></div>
+                        <div class="sev-bar-item"><span class="sev-pill medium">2 Medium</span></div>
+                        <div class="sev-bar-item"><span class="sev-pill low">0 Low</span></div>
+                        <div class="sev-bar-item"><span class="sev-pill info">0 Info</span></div>
+                    </div>
+                </div>
+
+                <!-- Expanded finding with remediation code snippet -->
+                <div class="report-expanded-finding">
+                    <div class="finding-header">
+                        <div class="finding-title-left">
+                            <span class="status-badge badge-medium">MEDIUM</span>
+                            <span class="finding-rule-id">CR-002</span>
+                            <h4>Strict-Transport-Security (HSTS) Missing or Disabled</h4>
+                        </div>
+                        <span class="finding-category">Transport Security</span>
+                    </div>
+
+                    <div class="finding-body-text">
+                        <p>
+                            The target web server does not provide the <code>Strict-Transport-Security</code> response header. Browsers may establish unencrypted initial HTTP connections, exposing user traffic to SSL-stripping and man-in-the-middle attacks.
+                        </p>
+                    </div>
+
+                    <!-- Remediation code snippet tabs -->
+                    <div class="remediation-box">
+                        <div class="remediation-header">
+                            <span class="remediation-title">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                Recommended Remediation
+                            </span>
+                            <div class="remediation-tabs" role="tablist" aria-label="Web server remediation tabs">
+                                <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="nginx">Nginx</button>
+                                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="apache">Apache</button>
+                                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="express">Express</button>
+                            </div>
+                        </div>
+
+                        <div class="code-panel">
+                            <!-- Nginx snippet -->
+                            <div class="tab-code active" id="code-nginx">
+                                <pre><code><span class="code-comment"># In your nginx HTTPS server configuration block (port 443)</span>
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;</code></pre>
+                            </div>
+
+                            <!-- Apache snippet -->
+                            <div class="tab-code" id="code-apache">
+                                <pre><code><span class="code-comment"># In your Apache VirtualHost configuration block</span>
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"</code></pre>
+                            </div>
+
+                            <!-- Express snippet -->
+                            <div class="tab-code" id="code-express">
+                                <pre><code><span class="code-comment">// In your Express.js app setup using Helmet middleware</span>
+const helmet = require('helmet');
+app.use(helmet.hsts({
+    maxAge: 31536000,
+    includeSubDomains: true
+}));</code></pre>
+                            </div>
+
+                            <button type="button" class="btn-copy-snippet" id="btn-copy-code" title="Copy code snippet to clipboard" aria-label="Copy remediation snippet">
+                                <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                <span class="copy-label">Copy snippet</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 5: CHECK CATALOG (18 CHECKS BY CATEGORY)
+             ===================================================== -->
+        <section class="section checks-catalog-section" id="checks" aria-labelledby="checks-heading">
+            <div class="section-header">
+                <div class="section-tag">RULE DIRECTORY</div>
+                <h2 id="checks-heading">18 Deterministic Security Checks</h2>
+                <p class="section-desc">
+                    Every assessment evaluates all 18 standardized security baseline rules mapped to CWE and OWASP categories.
+                </p>
+            </div>
+
+            <!-- Category Filter Tabs -->
+            <div class="catalog-tabs" role="tablist" aria-label="Security check category filter">
+                <button type="button" class="cat-tab-btn active" role="tab" aria-selected="true" data-cat="all">All Checks (18)</button>
+                <button type="button" class="cat-tab-btn" role="tab" aria-selected="false" data-cat="transport">Transport Security (2)</button>
+                <button type="button" class="cat-tab-btn" role="tab" aria-selected="false" data-cat="headers">Browser Security &amp; Headers (7)</button>
+                <button type="button" class="cat-tab-btn" role="tab" aria-selected="false" data-cat="origin">Cross-Origin Isolation (4)</button>
+                <button type="button" class="cat-tab-btn" role="tab" aria-selected="false" data-cat="session">Session &amp; Disclosure (5)</button>
+            </div>
+
+            <div class="checks-grid" id="checks-catalog-grid">
+                <!-- 1. CR-001 -->
+                <div class="check-card" data-category="transport">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-001</span>
+                        <span class="status-badge badge-high">HIGH</span>
+                    </div>
+                    <h4>HTTPS Not Enabled</h4>
+                    <span class="check-cat-name">Transport Security</span>
+                    <p>Web server fails to accept HTTPS connections or lacks automatic redirect to encrypted transport.</p>
+                    <div class="check-meta-line"><span>CWE-319</span> &bull; <span>Cleartext Transmission</span></div>
+                </div>
+
+                <!-- 2. CR-002 -->
+                <div class="check-card" data-category="transport">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-002</span>
+                        <span class="status-badge badge-medium">MEDIUM</span>
+                    </div>
+                    <h4>Strict-Transport-Security Missing</h4>
+                    <span class="check-cat-name">Transport Security</span>
+                    <p>HSTS header missing or has insufficient max-age, exposing users to SSL-stripping attacks.</p>
+                    <div class="check-meta-line"><span>CWE-523</span> &bull; <span>Unprotected Transport</span></div>
+                </div>
+
+                <!-- 3. CR-003 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-003</span>
+                        <span class="status-badge badge-medium">MEDIUM</span>
+                    </div>
+                    <h4>Content-Security-Policy Missing</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>Missing CSP header allows unrestricted loading of external scripts and inline code execution.</p>
+                    <div class="check-meta-line"><span>CWE-79</span> &bull; <span>Cross-Site Scripting (XSS)</span></div>
+                </div>
+
+                <!-- 4. CR-004 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-004</span>
+                        <span class="status-badge badge-medium">MEDIUM</span>
+                    </div>
+                    <h4>Clickjacking Protection Missing</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>Neither X-Frame-Options nor CSP frame-ancestors is present to prevent clickjacking in iframes.</p>
+                    <div class="check-meta-line"><span>CWE-1021</span> &bull; <span>Clickjacking</span></div>
+                </div>
+
+                <!-- 5. CR-005 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-005</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>MIME-Type Sniffing Protection Missing</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>X-Content-Type-Options: nosniff header missing, allowing browsers to execute scripts in non-script MIME types.</p>
+                    <div class="check-meta-line"><span>CWE-79</span> &bull; <span>MIME Confusion</span></div>
+                </div>
+
+                <!-- 6. CR-006 -->
+                <div class="check-card" data-category="session">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-006</span>
+                        <span class="status-badge badge-info">INFO</span>
+                    </div>
+                    <h4>Server Header Discloses Version</h4>
+                    <span class="check-cat-name">Session &amp; Disclosure</span>
+                    <p>Server response header reveals web server software name and precise version numbers.</p>
+                    <div class="check-meta-line"><span>CWE-200</span> &bull; <span>Information Exposure</span></div>
+                </div>
+
+                <!-- 7. CR-007 -->
+                <div class="check-card" data-category="session">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-007</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>X-Powered-By Header Disclosed</h4>
+                    <span class="check-cat-name">Session &amp; Disclosure</span>
+                    <p>Header exposes underlying backend application framework or runtime technology stack.</p>
+                    <div class="check-meta-line"><span>CWE-200</span> &bull; <span>Technology Fingerprinting</span></div>
+                </div>
+
+                <!-- 8. CR-008 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-008</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Referrer-Policy Header Missing</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>Referrer-Policy not set, risking leakage of sensitive URI query parameters to external sites.</p>
+                    <div class="check-meta-line"><span>CWE-200</span> &bull; <span>Referrer Information Leak</span></div>
+                </div>
+
+                <!-- 9. CR-009 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-009</span>
+                        <span class="status-badge badge-info">INFO</span>
+                    </div>
+                    <h4>Permissions-Policy Missing</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>No restriction configured for sensitive browser APIs like camera, microphone, or geolocation.</p>
+                    <div class="check-meta-line"><span>CWE-250</span> &bull; <span>Least Privilege</span></div>
+                </div>
+
+                <!-- 10. CR-010 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-010</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Unsafe Referrer-Policy Configuration</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>Referrer-Policy uses unsafe values like unsafe-url or no-referrer-when-downgrade.</p>
+                    <div class="check-meta-line"><span>CWE-200</span> &bull; <span>Unsafe Referrer Leak</span></div>
+                </div>
+
+                <!-- 11. CR-011 -->
+                <div class="check-card" data-category="headers">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-011</span>
+                        <span class="status-badge badge-medium">MEDIUM</span>
+                    </div>
+                    <h4>Weak CSP Directives Detected</h4>
+                    <span class="check-cat-name">Browser Security &amp; Headers</span>
+                    <p>CSP contains unsafe-inline, unsafe-eval, or wildcard sources that weaken XSS defenses.</p>
+                    <div class="check-meta-line"><span>CWE-79</span> &bull; <span>Insecure Policy Directive</span></div>
+                </div>
+
+                <!-- 12. CR-012 -->
+                <div class="check-card" data-category="origin">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-012</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Permissive Wildcard CORS Header</h4>
+                    <span class="check-cat-name">Cross-Origin Isolation</span>
+                    <p>Access-Control-Allow-Origin set to wildcard (*), allowing any site to read public responses.</p>
+                    <div class="check-meta-line"><span>CWE-346</span> &bull; <span>Permissive CORS</span></div>
+                </div>
+
+                <!-- 13. CR-013 -->
+                <div class="check-card" data-category="origin">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-013</span>
+                        <span class="status-badge badge-info">INFO</span>
+                    </div>
+                    <h4>Cross-Origin-Opener-Policy Missing</h4>
+                    <span class="check-cat-name">Cross-Origin Isolation</span>
+                    <p>COOP header missing, leaving window references accessible across origins.</p>
+                    <div class="check-meta-line"><span>CWE-668</span> &bull; <span>Origin Isolation</span></div>
+                </div>
+
+                <!-- 14. CR-014 -->
+                <div class="check-card" data-category="origin">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-014</span>
+                        <span class="status-badge badge-info">INFO</span>
+                    </div>
+                    <h4>Cross-Origin-Resource-Policy Missing</h4>
+                    <span class="check-cat-name">Cross-Origin Isolation</span>
+                    <p>CORP header missing, permitting arbitrary external origins to read loaded media or scripts.</p>
+                    <div class="check-meta-line"><span>CWE-346</span> &bull; <span>Cross-Origin Resource Read</span></div>
+                </div>
+
+                <!-- 15. CR-015 -->
+                <div class="check-card" data-category="origin">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-015</span>
+                        <span class="status-badge badge-info">INFO</span>
+                    </div>
+                    <h4>Cross-Origin-Embedder-Policy Missing</h4>
+                    <span class="check-cat-name">Cross-Origin Isolation</span>
+                    <p>COEP header not configured, preventing robust process-level cross-origin isolation.</p>
+                    <div class="check-meta-line"><span>CWE-668</span> &bull; <span>Execution Isolation</span></div>
+                </div>
+
+                <!-- 16. CR-016 -->
+                <div class="check-card" data-category="session">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-016</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Cookie Insecure Flag Detected</h4>
+                    <span class="check-cat-name">Session &amp; Disclosure</span>
+                    <p>Set-Cookie header sets session cookies without the mandatory Secure directive.</p>
+                    <div class="check-meta-line"><span>CWE-614</span> &bull; <span>Cookie Without Secure Flag</span></div>
+                </div>
+
+                <!-- 17. CR-017 -->
+                <div class="check-card" data-category="session">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-017</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Cookie HttpOnly Flag Missing</h4>
+                    <span class="check-cat-name">Session &amp; Disclosure</span>
+                    <p>Session cookies lack HttpOnly flag, allowing client-side scripts to access sensitive tokens.</p>
+                    <div class="check-meta-line"><span>CWE-1004</span> &bull; <span>Sensitive Cookie Exposure</span></div>
+                </div>
+
+                <!-- 18. CR-018 -->
+                <div class="check-card" data-category="session">
+                    <div class="check-card-header">
+                        <span class="check-id">CR-018</span>
+                        <span class="status-badge badge-low">LOW</span>
+                    </div>
+                    <h4>Cookie SameSite Attribute Missing</h4>
+                    <span class="check-cat-name">Session &amp; Disclosure</span>
+                    <p>Cookie lacks SameSite=Lax or SameSite=Strict attribute, increasing CSRF vulnerability.</p>
+                    <div class="check-meta-line"><span>CWE-1275</span> &bull; <span>SameSite Flag Missing</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 6: RESPONSIBLE USE & ETHICAL BOUNDARY
+             ===================================================== -->
+        <section class="section responsible-use-section" id="responsible-use" aria-labelledby="responsible-heading">
+            <div class="section-header">
+                <div class="section-tag">ETHICAL COMMITMENT</div>
+                <h2 id="responsible-heading">Responsible Defensive Auditing</h2>
+                <p class="section-desc">
+                    CyberRecon operates strictly within defensive security boundaries to protect target infrastructure from disruption.
+                </p>
+            </div>
+
+            <div class="responsible-use-grid">
+                <!-- Column 1: What it does -->
+                <div class="use-column col-allowed">
+                    <div class="col-header">
+                        <div class="col-icon-wrapper allowed">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <h3>What CyberRecon Does</h3>
+                    </div>
+                    <ul class="use-list">
+                        <li>
+                            <strong>Public Response Inspection:</strong>
+                            <span>Reads standard HTTP and HTTPS response headers returned by the target web server.</span>
+                        </li>
+                        <li>
+                            <strong>Cryptographic Handshake Audit:</strong>
+                            <span>Evaluates public TLS certificates, cipher suite negotiations, and protocol versions.</span>
+                        </li>
+                        <li>
+                            <strong>Public DNS Record Queries:</strong>
+                            <span>Checks authoritative CAA, SPF, and DMARC DNS records for domain authentication.</span>
+                        </li>
+                        <li>
+                            <strong>Cookie Security Validation:</strong>
+                            <span>Inspects Set-Cookie directives for Secure, HttpOnly, and SameSite attributes.</span>
+                        </li>
+                        <li>
+                            <strong>Safe Redirect Verification:</strong>
+                            <span>Validates each redirect hop before following, enforcing strict host verification.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Column 2: What it never does -->
+                <div class="use-column col-forbidden">
+                    <div class="col-header">
+                        <div class="col-icon-wrapper forbidden">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                        </div>
+                        <h3>What CyberRecon Never Does</h3>
+                    </div>
+                    <ul class="use-list">
+                        <li>
+                            <strong>Zero Exploit Payloads:</strong>
+                            <span>Never injects SQL payloads, XSS vectors, command injection, or fuzzing payloads.</span>
+                        </li>
+                        <li>
+                            <strong>No Port Scanning or Service Sweeps:</strong>
+                            <span>Never performs raw socket port scans, TCP SYN floods, or UDP service discovery.</span>
+                        </li>
+                        <li>
+                            <strong>No Brute Force or Credential Attacks:</strong>
+                            <span>Never attempts login credential guessing, password spraying, or session brute force.</span>
+                        </li>
+                        <li>
+                            <strong>No Directory Fuzzing or Crawling:</strong>
+                            <span>Never executes dictionary file enumeration, crawler spidering, or hidden path discovery.</span>
+                        </li>
+                        <li>
+                            <strong>No Intrusive Traffic or Load Stress:</strong>
+                            <span>Dispatches minimal benign HTTP requests with standard browser-like intervals.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SSRF Safeguard Callout Banner -->
+            <div class="ssrf-safeguard-card">
+                <div class="ssrf-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <h4>Server-Side Request Forgery (SSRF) Boundary Safeguard</h4>
+                </div>
+                <p>
+                    CyberRecon enforces mandatory kernel-level and DNS-level address filtering. Before opening any network socket, target hostnames are resolved and strictly validated. Any host resolving to <strong>RFC 1918 private subnets</strong> (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>), <strong>loopback addresses</strong> (<code>127.0.0.0/8</code>), <strong>link-local ranges</strong> (<code>169.254.0.0/16</code>), or <strong>cloud metadata endpoints</strong> (<code>169.254.169.254</code>) is unconditionally rejected.
+                </p>
+                <div class="legal-reminder-strip">
+                    <strong>Legal Notice:</strong> Users must only assess domains they own or for which they have verified written authorization. Unauthorized assessment of computer systems may violate the Computer Fraud and Abuse Act (CFAA) or local cybersecurity legislation.
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 7: FAQ ACCORDION
+             ===================================================== -->
+        <section class="section faq-section" id="faq" aria-labelledby="faq-heading">
+            <div class="section-header">
+                <div class="section-tag">FREQUENTLY ASKED QUESTIONS</div>
+                <h2 id="faq-heading">Security &amp; Assessment FAQs</h2>
+                <p class="section-desc">
+                    Common questions regarding passive scanning boundaries, ethics, scoring, and storage.
+                </p>
+            </div>
+
+            <div class="faq-accordion">
+                <!-- Q1 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-1" id="faq-btn-1">
+                        <span>Is passive security reconnaissance legal?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-1" role="region" aria-labelledby="faq-btn-1">
+                        <p>
+                            Yes, when conducted against your own systems or targets you have written authorization to inspect. CyberRecon requests only public HTTP headers, TLS certificate details, and DNS records returned to standard clients. It never bypasses access controls, executes exploits, or accesses private information.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-2" id="faq-btn-2">
+                        <span>What counts strictly as "passive" evaluation?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-2" role="region" aria-labelledby="faq-btn-2">
+                        <p>
+                            Passive evaluation inspects standard configuration settings and headers returned during ordinary web requests. Unlike active vulnerability scanners or penetration testing suites, CyberRecon never executes directory brute forcing, SQL injection, buffer overflow fuzzing, port sweeps, or authentication attacks.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-3" id="faq-btn-3">
+                        <span>Are assessment targets or scan results stored externally?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-3" role="region" aria-labelledby="faq-btn-3">
+                        <p>
+                            No. CyberRecon is designed to run self-contained. All scan histories, targets, and security findings are recorded strictly in the local SQLite database and isolated per authenticated user session. No assessment data is transmitted to external telemetry or third-party servers.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q4 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-4" id="faq-btn-4">
+                        <span>Why was my target hostname or IP address blocked?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-4" role="region" aria-labelledby="faq-btn-4">
+                        <p>
+                            CyberRecon enforces strict Server-Side Request Forgery (SSRF) boundary guards. All loopback addresses (127.0.0.1, localhost), private RFC 1918 subnets (10.x, 172.16-31.x, 192.168.x), link-local IP ranges (169.254.x), and cloud metadata endpoints are unconditionally blocked before any socket is opened.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q5 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-5" id="faq-btn-5">
+                        <span>How is the security posture score and grade calculated?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-5" role="region" aria-labelledby="faq-btn-5">
+                        <p>
+                            Every target starts with 100 points. Penalties are weighted by finding severity: Critical findings deduct 25 points, High findings deduct 15 points, Medium deduct 10, Low deduct 5, and Info findings deduct 0. Letter grades map cleanly: A (90-100), B (80-89), C (70-79), D (60-69), and F (below 60).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q6 -->
+                <div class="faq-card">
+                    <button type="button" class="faq-trigger" aria-expanded="false" aria-controls="faq-ans-6" id="faq-btn-6">
+                        <span>Is there an automated API or CI/CD integration?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="faq-content" id="faq-ans-6" role="region" aria-labelledby="faq-btn-6">
+                        <p>
+                            CyberRecon's scanner is packaged as a modular Python engine that outputs structured dictionaries. You can invoke the scanner directly in automated test pipelines, export JSON reports, or compare consecutive builds to detect security regressions before production release.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             SECTION 8: FINAL CTA BAND
+             ===================================================== -->
+        <section class="final-cta-section" id="cta-band" aria-labelledby="cta-heading">
+            <div class="cta-banner-card">
+                <div class="cta-content">
+                    <div class="section-tag">START RECONNAISSANCE</div>
+                    <h2 id="cta-heading">Run Your First Assessment</h2>
+                    <p>
+                        Verify defensive HTTP headers, TLS encryption, and DNS authorization in seconds with zero intrusive payloads.
+                    </p>
+                </div>
+                <div class="cta-action">
+                    <button type="button" class="btn-primary btn-large" id="btn-scroll-hero">
+                        <span>Assess Authorized Target</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
+    <footer class="site-footer">
+        <div class="container footer-container">
+            <div class="footer-brand">
+                <a href="{{ url_for('home') }}" class="brand">
+                    <svg class="brand-shield-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="M9 12l2 2 4-4" stroke="var(--accent-emerald)" stroke-width="2.5"></path>
+                    </svg>
+                    <span class="brand-text">Cyber<span>Recon</span></span>
+                </a>
+                <p class="footer-tagline">
+                    Passive reconnaissance and security-configuration analysis platform for authorized web targets.
+                </p>
+            </div>
+
+            <div class="footer-links">
+                <div class="footer-col">
+                    <span class="footer-col-title">Navigation</span>
+                    <a href="#features">Features</a>
+                    <a href="#how-it-works">How it works</a>
+                    <a href="#checks">18 Checks</a>
+                    <a href="#responsible-use">Responsible Use</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+
+                <div class="footer-col">
+                    <span class="footer-col-title">Workspace</span>
+                    {% if current_user_id %}
+                    <a href="{{ url_for('new_assessment') }}">New Assessment</a>
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('history') }}">Scan History</a>
+                    <a href="{{ url_for('compare_scans') }}">Compare Scans</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}">Login</a>
+                    <a href="{{ url_for('register') }}">Register</a>
+                    <a href="#sample-report">Sample Report</a>
+                    {% endif %}
+                </div>
+
+                <div class="footer-col">
+                    <span class="footer-col-title">Trust &amp; Legal</span>
+                    <a href="#responsible-use">Authorization Requirement</a>
+                    <a href="#responsible-use">SSRF Boundary Guard</a>
+                    <a href="#privacy" onclick="alert('CyberRecon stores all assessment findings strictly in your local database without external tracking or third-party telemetry.'); return false;">Privacy Policy</a>
+                    <a href="#terms" onclick="alert('CyberRecon must only be used on targets you own or have explicit written authorization to evaluate.'); return false;">Terms of Use</a>
+                </div>
+            </div>
         </div>
 
+        <div class="footer-bottom">
+            <div class="container footer-bottom-inner">
+                <p>&copy; <span id="footer-year">2026</span> CyberRecon. Engineered for authorized defensive web security assessment.</p>
+                <p class="footer-disclaimer">Only assess authorized systems you own or have explicit permission to test.</p>
+            </div>
+        </div>
+    </footer>
+{% endblock %}
+
+{% block extra_modals %}
+    <!-- "What's Checked?" Modal (18 Passive Rules grouped by category) -->
+    <div id="whats-checked-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none;">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3 id="modal-title" style="font-size: 18px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    18 Deterministic Passive Security Checks
+                </h3>
+                <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Close dialog">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div style="margin-top: 18px; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
+                <p>CyberRecon inspects HTTP responses against 18 standardized security baseline rules mapped to CWE and OWASP categories:</p>
+                
+                <div style="margin-top: 6px;">
+                    <strong style="color: var(--accent-emerald); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">1. Transport Security (2 checks)</strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div class="modal-check-pill"><strong>CR-001 HTTPS Not Enabled</strong> <span>High</span></div>
+                        <div class="modal-check-pill"><strong>CR-002 HSTS Missing / Disabled</strong> <span>Medium</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 6px;">
+                    <strong style="color: var(--accent-emerald); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">2. Browser Security &amp; Defensive Headers (7 checks)</strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div class="modal-check-pill"><strong>CR-003 Content-Security-Policy</strong> <span>Medium</span></div>
+                        <div class="modal-check-pill"><strong>CR-004 Clickjacking Protection</strong> <span>Medium</span></div>
+                        <div class="modal-check-pill"><strong>CR-005 MIME Sniffing Protection</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-008 Referrer-Policy Missing</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-009 Permissions-Policy Missing</strong> <span>Info</span></div>
+                        <div class="modal-check-pill"><strong>CR-010 Unsafe Referrer-Policy</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-011 Weak CSP Directives</strong> <span>Medium</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 6px;">
+                    <strong style="color: var(--accent-emerald); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">3. Cross-Origin Isolation &amp; Access (4 checks)</strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div class="modal-check-pill"><strong>CR-012 Wildcard CORS Origin</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-013 Cross-Origin-Opener (COOP)</strong> <span>Info</span></div>
+                        <div class="modal-check-pill"><strong>CR-014 Cross-Origin-Resource (CORP)</strong> <span>Info</span></div>
+                        <div class="modal-check-pill"><strong>CR-015 Cross-Origin-Embedder (COEP)</strong> <span>Info</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 6px;">
+                    <strong style="color: var(--accent-emerald); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">4. Session Security &amp; Information Exposure (5 checks)</strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                        <div class="modal-check-pill"><strong>CR-006 Server Header Disclosure</strong> <span>Info</span></div>
+                        <div class="modal-check-pill"><strong>CR-007 X-Powered-By Disclosure</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-016 Cookie Insecure Flag</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-017 Cookie HttpOnly Missing</strong> <span>Low</span></div>
+                        <div class="modal-check-pill"><strong>CR-018 Cookie SameSite Missing</strong> <span>Low</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+{% endblock %}
 
-</nav>
+{% block scripts %}
+    <script>
+    (function () {
+        'use strict';
 
+        // ---------------------------------------------------------
+        // 1. Dynamic Footer Year
+        // ---------------------------------------------------------
+        var yearEl = document.getElementById('footer-year');
+        if (yearEl) {
+            yearEl.textContent = new Date().getFullYear();
+        }
 
-<main class="container">
+        // ---------------------------------------------------------
+        // 2. Hero Input Normalization & Validation Controller
+        // ---------------------------------------------------------
+        var targetInput = document.getElementById('target');
+        var previewUrlText = document.getElementById('preview-url-text');
+        var consentCb = document.getElementById('auth-consent-cb');
+        var startBtn = document.getElementById('start-assessment-btn');
+        var disabledReason = document.getElementById('btn-disabled-reason');
+        var inlineError = document.getElementById('inline-target-error');
+        var errorText = document.getElementById('target-error-text');
+        var assessmentForm = document.getElementById('assessment-form');
+        var authContainer = document.getElementById('auth-consent-container');
 
-<section class="hero-section">
+        // Check if current user is logged in (injected via Jinja)
+        var isLoggedIn = {% if current_user_id %}true{% else %}false{% endif %};
 
-    <div class="tag">
-        WEB SECURITY ASSESSMENT PLATFORM
-    </div>
+        function cleanPastedInput(raw) {
+            if (!raw) return '';
+            return raw.trim().replace(/^['"]+|['"]+$/g, '');
+        }
 
-    <h1>
-        Discover.
-        Analyse.
-        <span>Understand.</span>
-    </h1>
+        function normalizeTarget(raw) {
+            var val = cleanPastedInput(raw);
+            if (!val) return '';
+            // If already has protocol, keep it
+            if (/^https?:\/\//i.test(val)) {
+                return val;
+            }
+            // Auto prefix https://
+            return 'https://' + val;
+        }
 
-    <p class="subtitle">
-        CyberRecon performs passive reconnaissance
-        and security-configuration analysis against
-        authorized HTTP and HTTPS targets.
-    </p>
+        function isPrivateOrBlockedIp(val) {
+            try {
+                var url = new URL(val.startsWith('http') ? val : 'https://' + val);
+                var hostname = url.hostname.toLowerCase();
 
+                // Loopback
+                if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.startsWith('127.')) {
+                    return { blocked: true, reason: 'Loopback and localhost addresses are blocked by SSRF safeguards.' };
+                }
+                // Private RFC 1918
+                if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
+                    return { blocked: true, reason: 'Private RFC 1918 addresses are blocked by SSRF safeguards.' };
+                }
+                if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) {
+                    return { blocked: true, reason: 'Private RFC 1918 subnets are blocked by SSRF safeguards.' };
+                }
+                // Link-local / metadata
+                if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+                    return { blocked: true, reason: 'Cloud instance metadata endpoints are blocked by SSRF safeguards.' };
+                }
+                // Obvious non-domains
+                if (!hostname.includes('.') && !hostname.startsWith('localhost')) {
+                    return { blocked: true, reason: 'Please enter a valid fully-qualified domain name (e.g. example.com).' };
+                }
+            } catch (e) {
+                return { blocked: false };
+            }
+            return { blocked: false };
+        }
 
-    {% if error %}
+        function validateInput() {
+            var raw = cleanPastedInput(targetInput ? targetInput.value : '');
+            if (!raw) {
+                if (previewUrlText) previewUrlText.textContent = 'https://...';
+                if (inlineError) inlineError.classList.remove('visible');
+                updateSubmitState(false, 'Enter an authorized target and confirm ownership or permission to launch.');
+                return false;
+            }
 
-    <div class="error-message">
-        {{ error }}
-    </div>
+            var normalized = normalizeTarget(raw);
+            if (previewUrlText) previewUrlText.textContent = normalized;
 
-    {% endif %}
+            // SSRF and private address check
+            var ssrfCheck = isPrivateOrBlockedIp(normalized);
+            if (ssrfCheck.blocked) {
+                if (errorText) errorText.textContent = ssrfCheck.reason;
+                if (inlineError) inlineError.classList.add('visible');
+                updateSubmitState(false, ssrfCheck.reason);
+                return false;
+            }
 
+            // Syntax check
+            var validFormat = /^https?:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(:\d+)?(\/.*)?$/i.test(normalized);
+            if (!validFormat) {
+                if (errorText) errorText.textContent = 'Please enter a valid domain name or HTTP/HTTPS target.';
+                if (inlineError) inlineError.classList.add('visible');
+                updateSubmitState(false, 'Please enter a valid domain name or HTTP/HTTPS target.');
+                return false;
+            }
 
-    <div class="scan-panel">
+            // Valid target
+            if (inlineError) inlineError.classList.remove('visible');
 
-        <form
-            action="{{ url_for('scan') }}"
-            method="POST"
-            class="scan-form"
-        >
+            // Now check authorization checkbox
+            if (!consentCb || !consentCb.checked) {
+                updateSubmitState(false, 'Authorization confirmation is required to launch assessment.');
+                return false;
+            }
 
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token }}"
-            >
+            updateSubmitState(true, 'Ready to launch assessment.');
+            return true;
+        }
 
-            <label for="target">
-                Authorized Target
-            </label>
+        function updateSubmitState(enabled, reason) {
+            if (startBtn) {
+                startBtn.disabled = !enabled;
+            }
+            if (disabledReason) {
+                disabledReason.textContent = reason;
+                if (enabled) {
+                    disabledReason.classList.add('ready');
+                } else {
+                    disabledReason.classList.remove('ready');
+                }
+            }
+        }
 
-            <input
-                id="target"
-                name="target"
-                type="text"
-                value="{{ target or '' }}"
-                placeholder="example.com or https://example.com"
-                autocomplete="off"
-                required
-            >
+        if (targetInput) {
+            targetInput.addEventListener('input', function () {
+                validateInput();
+            });
 
-            <button
-                type="submit"
-                class="scan-button"
-            >
-                Start Assessment
-            </button>
+            targetInput.addEventListener('blur', function () {
+                var raw = cleanPastedInput(targetInput.value);
+                if (raw && !raw.startsWith('http://') && !raw.startsWith('https://')) {
+                    if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(:\d+)?(\/.*)?$/.test(raw)) {
+                        targetInput.value = 'https://' + raw;
+                    }
+                }
+                validateInput();
+            });
 
-        </form>
+            targetInput.addEventListener('paste', function () {
+                setTimeout(function () {
+                    targetInput.value = cleanPastedInput(targetInput.value);
+                    validateInput();
+                }, 10);
+            });
+        }
 
-    </div>
+        if (consentCb) {
+            consentCb.addEventListener('change', function () {
+                if (authContainer) authContainer.classList.remove('highlight-missing');
+                validateInput();
+            });
+        }
 
+        // Disabled button click handler: scroll to & highlight missing requirement
+        if (startBtn) {
+            startBtn.addEventListener('click', function (e) {
+                if (startBtn.disabled) {
+                    e.preventDefault();
+                    var raw = cleanPastedInput(targetInput ? targetInput.value : '');
+                    if (!raw) {
+                        targetInput.focus();
+                        targetInput.classList.add('highlight-missing');
+                        setTimeout(function () { targetInput.classList.remove('highlight-missing'); }, 1800);
+                        if (disabledReason) disabledReason.textContent = 'Please enter an authorized web target.';
+                        return;
+                    }
 
-    <div class="authorization-notice">
+                    if (!consentCb.checked) {
+                        if (authContainer) {
+                            authContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            authContainer.classList.add('highlight-missing');
+                            consentCb.focus();
+                            setTimeout(function () { authContainer.classList.remove('highlight-missing'); }, 2000);
+                        }
+                        if (disabledReason) disabledReason.textContent = 'Please confirm authorization by checking the box.';
+                        return;
+                    }
+                }
+            });
+        }
 
-        <strong>
-            Authorization Required
-        </strong>
+        // Form submit handler with Logged-Out / Logged-In Flow routing
+        if (assessmentForm) {
+            assessmentForm.addEventListener('submit', function (e) {
+                var isValid = validateInput();
+                if (!isValid) {
+                    e.preventDefault();
+                    return;
+                }
 
-        <p>
-            Only assess systems you own or systems
-            for which you have explicit permission.
-            CyberRecon currently performs passive
-            HTTP/DNS-based analysis and does not
-            perform exploitation or brute-force attacks.
-        </p>
+                var normalized = normalizeTarget(targetInput.value);
+                targetInput.value = normalized;
 
-    </div>
+                if (startBtn) {
+                    startBtn.classList.add('is-loading');
+                    var btnText = startBtn.querySelector('.btn-text');
+                    if (btnText) btnText.textContent = 'Launching…';
+                }
 
-</section>
+                // If user is logged out, route to Register/Login preserving next and target
+                if (!isLoggedIn) {
+                    e.preventDefault();
+                    var newAssessmentPath = "{{ url_for('new_assessment') }}?target=" + encodeURIComponent(normalized);
+                    var registerUrl = "{{ url_for('register') }}?target=" + encodeURIComponent(normalized) + "&next=" + encodeURIComponent(newAssessmentPath);
+                    window.location.href = registerUrl;
+                    return;
+                }
 
-</main>
+                // If logged in, navigate directly to New Assessment with target prefilled
+                e.preventDefault();
+                window.location.href = "{{ url_for('new_assessment') }}?target=" + encodeURIComponent(normalized);
+            });
+        }
 
-</body>
+        // Initial validation check
+        validateInput();
 
-</html>
+        // ---------------------------------------------------------
+        // 3. Looping Animated Demo Preview Card
+        // ---------------------------------------------------------
+        var demoCard = document.getElementById('demo-preview-card');
+        var demoUrlDisplay = document.getElementById('demo-url-display');
+        var demoScoreNumber = document.getElementById('demo-score-number');
+        var demoScoreFill = document.getElementById('demo-score-fill');
+        var demoStageLabel = document.getElementById('demo-stage-label');
+        var demoGradeBadge = document.getElementById('demo-grade-badge');
+        var demoPauseBtn = document.getElementById('demo-pause-btn');
+        var demoBeam = document.getElementById('demo-scanner-beam');
+
+        var demoChecks = [
+            { id: 0, badgeId: 'demo-badge-0', status: 'PASS', class: 'badge-pass' },
+            { id: 1, badgeId: 'demo-badge-1', status: 'HIGH', class: 'badge-high' },
+            { id: 2, badgeId: 'demo-badge-2', status: 'PASS', class: 'badge-pass' },
+            { id: 3, badgeId: 'demo-badge-3', status: 'PASS', class: 'badge-pass' },
+            { id: 4, badgeId: 'demo-badge-4', status: 'MEDIUM', class: 'badge-medium' }
+        ];
+
+        var isPaused = false;
+        var demoTimer = null;
+        var demoUrlString = 'https://demo.securecloud.app';
+        var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function setScoreRing(score) {
+            if (!demoScoreFill) return;
+            var circumference = 2 * Math.PI * 30; // ~188.49
+            var offset = circumference - (score / 100) * circumference;
+            demoScoreFill.style.strokeDashoffset = offset;
+            if (demoScoreNumber) demoScoreNumber.textContent = score;
+        }
+
+        function runDemoCycle() {
+            if (prefersReducedMotion) {
+                // Static completed state
+                if (demoUrlDisplay) demoUrlDisplay.textContent = demoUrlString;
+                setScoreRing(84);
+                demoChecks.forEach(function (c) {
+                    var el = document.getElementById(c.badgeId);
+                    if (el) {
+                        el.textContent = c.status;
+                        el.className = 'status-badge ' + c.class;
+                    }
+                });
+                return;
+            }
+
+            if (isPaused) return;
+
+            // Step 1: Reset to pending state
+            if (demoUrlDisplay) demoUrlDisplay.textContent = 'https://';
+            if (demoStageLabel) demoStageLabel.textContent = 'Connecting…';
+            if (demoGradeBadge) demoGradeBadge.textContent = 'SCANNING';
+            setScoreRing(0);
+
+            demoChecks.forEach(function (c) {
+                var el = document.getElementById(c.badgeId);
+                if (el) {
+                    el.textContent = 'PENDING';
+                    el.className = 'status-badge badge-pending';
+                }
+            });
+
+            // Step 2: Type URL
+            var typeIndex = 8;
+            var typeInterval = setInterval(function () {
+                if (isPaused) return;
+                if (typeIndex <= demoUrlString.length) {
+                    if (demoUrlDisplay) demoUrlDisplay.textContent = demoUrlString.substring(0, typeIndex);
+                    typeIndex++;
+                } else {
+                    clearInterval(typeInterval);
+                    startResolvingChecks();
+                }
+            }, 55);
+        }
+
+        function startResolvingChecks() {
+            if (isPaused) return;
+            if (demoStageLabel) demoStageLabel.textContent = 'Auditing Headers & TLS…';
+
+            var checkIdx = 0;
+            var checkInterval = setInterval(function () {
+                if (isPaused) return;
+                if (checkIdx < demoChecks.length) {
+                    var c = demoChecks[checkIdx];
+                    var el = document.getElementById(c.badgeId);
+                    if (el) {
+                        el.textContent = c.status;
+                        el.className = 'status-badge ' + c.class;
+                    }
+                    checkIdx++;
+                } else {
+                    clearInterval(checkInterval);
+                    animateScoreUp();
+                }
+            }, 320);
+        }
+
+        function animateScoreUp() {
+            if (isPaused) return;
+            var currentScore = 0;
+            var targetScore = 84;
+            var scoreInterval = setInterval(function () {
+                if (isPaused) return;
+                if (currentScore < targetScore) {
+                    currentScore += 3;
+                    if (currentScore > targetScore) currentScore = targetScore;
+                    setScoreRing(currentScore);
+                } else {
+                    clearInterval(scoreInterval);
+                    if (demoStageLabel) demoStageLabel.textContent = 'Audit Complete';
+                    if (demoGradeBadge) demoGradeBadge.textContent = 'GRADE B';
+                    // Hold for 3.5 seconds, then restart cycle
+                    demoTimer = setTimeout(function () {
+                        if (!isPaused) runDemoCycle();
+                    }, 3500);
+                }
+            }, 30);
+        }
+
+        // Pause/play toggle button
+        if (demoPauseBtn) {
+            demoPauseBtn.addEventListener('click', function () {
+                isPaused = !isPaused;
+                var iconPause = demoPauseBtn.querySelector('.icon-pause');
+                var iconPlay = demoPauseBtn.querySelector('.icon-play');
+                if (isPaused) {
+                    if (iconPause) iconPause.style.display = 'none';
+                    if (iconPlay) iconPlay.style.display = 'block';
+                    demoPauseBtn.setAttribute('aria-label', 'Resume demo animation');
+                } else {
+                    if (iconPause) iconPause.style.display = 'block';
+                    if (iconPlay) iconPlay.style.display = 'none';
+                    demoPauseBtn.setAttribute('aria-label', 'Pause demo animation');
+                    runDemoCycle();
+                }
+            });
+        }
+
+        // Pause on hover / focus
+        if (demoCard) {
+            demoCard.addEventListener('mouseenter', function () { isPaused = true; });
+            demoCard.addEventListener('mouseleave', function () {
+                if (!demoPauseBtn.querySelector('.icon-play') || demoPauseBtn.querySelector('.icon-play').style.display === 'none') {
+                    isPaused = false;
+                }
+            });
+            demoCard.addEventListener('focusin', function () { isPaused = true; });
+            demoCard.addEventListener('focusout', function () {
+                if (!demoPauseBtn.querySelector('.icon-play') || demoPauseBtn.querySelector('.icon-play').style.display === 'none') {
+                    isPaused = false;
+                }
+            });
+        }
+
+        // Expandable Finding Rows
+        var previewRows = document.querySelectorAll('.preview-item-row.expandable');
+        previewRows.forEach(function (row) {
+            row.addEventListener('click', function () {
+                var wasOpen = row.classList.contains('open');
+                // Optional: toggle single or multiple
+                row.classList.toggle('open');
+                row.setAttribute('aria-expanded', !wasOpen);
+            });
+
+            row.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    row.click();
+                }
+            });
+        });
+
+        // Initialize demo loop
+        runDemoCycle();
+
+        // ---------------------------------------------------------
+        // 4. Facts Strip Counter Animation (IntersectionObserver)
+        // ---------------------------------------------------------
+        var factsElements = document.querySelectorAll('.fact-number[data-count]');
+        if ('IntersectionObserver' in window && factsElements.length > 0) {
+            var factsObserver = new IntersectionObserver(function (entries, observer) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        var targetCount = parseInt(entry.target.getAttribute('data-count'), 10);
+                        if (!isNaN(targetCount) && targetCount > 0) {
+                            var cur = 0;
+                            var stepTime = Math.max(20, Math.floor(1000 / targetCount));
+                            var factTimer = setInterval(function () {
+                                cur++;
+                                entry.target.textContent = cur;
+                                if (cur >= targetCount) {
+                                    clearInterval(factTimer);
+                                }
+                            }, stepTime);
+                        }
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.3 });
+
+            factsElements.forEach(function (el) {
+                factsObserver.observe(el);
+            });
+        }
+
+        // ---------------------------------------------------------
+        // 5. Sample Report Remediation Tabs & Copy Snippet
+        // ---------------------------------------------------------
+        var tabBtns = document.querySelectorAll('.remediation-tabs .tab-btn');
+        var codePanels = document.querySelectorAll('.code-panel .tab-code');
+        var copyBtn = document.getElementById('btn-copy-code');
+
+        tabBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tabKey = btn.getAttribute('data-tab');
+                tabBtns.forEach(function (b) {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+
+                codePanels.forEach(function (p) {
+                    p.classList.remove('active');
+                    if (p.id === 'code-' + tabKey) {
+                        p.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                var activeCode = document.querySelector('.code-panel .tab-code.active code');
+                if (activeCode) {
+                    var text = activeCode.textContent;
+                    navigator.clipboard.writeText(text).then(function () {
+                        var label = copyBtn.querySelector('.copy-label');
+                        if (label) label.textContent = 'Copied!';
+                        setTimeout(function () {
+                            if (label) label.textContent = 'Copy snippet';
+                        }, 2000);
+                    });
+                }
+            });
+        }
+
+        // ---------------------------------------------------------
+        // 6. Check Catalog Category Filtering
+        // ---------------------------------------------------------
+        var catBtns = document.querySelectorAll('.catalog-tabs .cat-tab-btn');
+        var checkCards = document.querySelectorAll('#checks-catalog-grid .check-card');
+
+        catBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var cat = btn.getAttribute('data-cat');
+                catBtns.forEach(function (b) {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+
+                checkCards.forEach(function (card) {
+                    if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                        card.style.display = 'flex';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // ---------------------------------------------------------
+        // 7. FAQ Accordion Toggle (Accessible)
+        // ---------------------------------------------------------
+        var faqTriggers = document.querySelectorAll('.faq-trigger');
+        faqTriggers.forEach(function (trigger) {
+            trigger.addEventListener('click', function () {
+                var card = trigger.closest('.faq-card');
+                var isOpen = card.classList.contains('open');
+
+                document.querySelectorAll('.faq-card').forEach(function (c) {
+                    c.classList.remove('open');
+                    var btn = c.querySelector('.faq-trigger');
+                    if (btn) btn.setAttribute('aria-expanded', 'false');
+                });
+
+                if (!isOpen) {
+                    card.classList.add('open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                }
+            });
+        });
+
+        // ---------------------------------------------------------
+        // 8. "What's Checked?" Modal
+        // ---------------------------------------------------------
+        var whatsCheckedBtn = document.getElementById('btn-whats-checked');
+        var modal = document.getElementById('whats-checked-modal');
+        var modalCloseBtn = document.getElementById('modal-close-btn');
+
+        function openModal() {
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.add('open');
+                if (modalCloseBtn) modalCloseBtn.focus();
+            }
+        }
+
+        function closeModal() {
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('open');
+                if (whatsCheckedBtn) whatsCheckedBtn.focus();
+            }
+        }
+
+        if (whatsCheckedBtn) whatsCheckedBtn.addEventListener('click', openModal);
+        if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+        if (modal) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
+            });
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
+                closeModal();
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 9. CTA Button Smooth Scroll to Hero Input
+        // ---------------------------------------------------------
+        var scrollHeroBtn = document.getElementById('btn-scroll-hero');
+        if (scrollHeroBtn) {
+            scrollHeroBtn.addEventListener('click', function () {
+                if (targetInput) {
+                    targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(function () { targetInput.focus(); }, 400);
+                }
+            });
+        }
+
+    })();
+    </script>
+{% endblock %}

@@ -1,24 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "history" %}
 
-<head>
+{% block title %}{{ scan.scan_id }} | CyberRecon{% endblock %}
 
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        {{ scan.scan_id }} | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
+{% block extra_head %}
     <style>
 
         .finding-metadata {
@@ -39,162 +24,98 @@
 
         .finding-meta-item {
             padding: 11px 12px;
-
-            border: 1px solid #1e344b;
-
+            border: 1px solid var(--border-subtle, #1e344b);
             border-radius: 7px;
-
-            background:
-                rgba(
-                    8,
-                    17,
-                    28,
-                    0.65
-                );
+            background: var(--surface-raised, rgba(8, 17, 28, 0.65));
         }
-
 
         .finding-meta-item span {
             display: block;
-
-            color: #64788e;
-
+            color: var(--text-muted, #64788e);
             font-size: 8px;
-
             font-weight: 600;
-
             letter-spacing: 0.9px;
         }
 
-
         .finding-meta-item strong {
             display: block;
-
             margin-top: 5px;
-
-            color: #bfcedd;
-
+            color: var(--text-primary, #bfcedd);
             font-size: 11px;
-
             line-height: 1.4;
-
             word-break: break-word;
         }
-
 
         .finding-meta-wide {
             grid-column: span 2;
         }
 
-
         .meta-high {
             color: #ff6673 !important;
         }
-
 
         .meta-medium {
             color: #f0a14a !important;
         }
 
-
         .meta-low {
             color: #e5c556 !important;
         }
-
 
         .meta-info {
             color: #65aee8 !important;
         }
 
-
         .archive-grid {
             display: grid;
-
-            grid-template-columns:
-                repeat(
-                    3,
-                    minmax(0, 1fr)
-                );
-
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
         }
 
-
         .archive-card {
             padding: 18px;
-
-            border: 1px solid #1c3149;
-
+            border: 1px solid var(--border-card, #1c3149);
             border-radius: 9px;
-
-            background:
-                rgba(
-                    10,
-                    18,
-                    30,
-                    0.82
-                );
+            background: var(--surface, rgba(10, 18, 30, 0.82));
         }
-
 
         .archive-card span {
             display: block;
-
-            color: #677b91;
-
+            color: var(--text-muted, #677b91);
             font-size: 8px;
-
             font-weight: 600;
-
             letter-spacing: 0.9px;
         }
 
-
         .archive-card strong {
             display: block;
-
             margin-top: 7px;
-
-            color: #c6d2df;
-
+            color: var(--text-primary, #c6d2df);
             font-size: 12px;
-
             line-height: 1.5;
-
             word-break: break-word;
         }
-
 
         .finding-copy {
             padding: 18px 20px;
         }
 
-
         .finding-copy div {
             margin-top: 16px;
         }
 
-
         .finding-copy span {
             display: block;
-
             margin-bottom: 6px;
-
-            color: #63778d;
-
+            color: var(--text-muted, #63778d);
             font-size: 9px;
-
             font-weight: 600;
-
             letter-spacing: 0.8px;
         }
 
-
         .finding-copy p {
             margin: 0;
-
-            color: #aebdca;
-
+            color: var(--text-secondary, #aebdca);
             line-height: 1.7;
         }
 
@@ -247,77 +168,9 @@
         }
 
     </style>
+{% endblock %}
 
-</head>
-
-
-<body>
-
-
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('home') }}"
-            class="nav-link"
-        >
-            New Assessment
-        </a>
-
-        <a
-            href="{{ url_for('dashboard') }}"
-            class="nav-link"
-        >
-            Dashboard
-        </a>
-
-        <a
-            href="{{ url_for('history') }}"
-            class="nav-link"
-        >
-            Scan History
-        </a>
-
-        <a
-            href="{{ url_for('compare_scans') }}"
-            class="nav-link"
-        >
-            Compare
-        </a>
-
-
-        {% if current_user_id %}
-
-        <span class="nav-user">
-            {{ current_username }}
-        </span>
-
-        <a
-            href="{{ url_for('logout') }}"
-            class="nav-link"
-        >
-            Logout
-        </a>
-
-        {% endif %}
-
-
-        <div class="nav-status">
-            ARCHIVED ASSESSMENT
-        </div>
-
-    </div>
-
-</nav>
-
-
-
+{% block content %}
 <main class="container">
 
 
@@ -887,7 +740,7 @@
 
 
         <a
-            href="{{ url_for('home') }}"
+            href="{{ url_for('new_assessment') }}"
             class="back-button"
         >
             New Assessment
@@ -900,8 +753,4 @@
 
 
 </main>
-
-
-</body>
-
-</html>
+{% endblock %}

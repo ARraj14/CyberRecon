@@ -1,38 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "register" %}
 
-<head>
-    <meta charset="UTF-8">
+{% block title %}Register | CyberRecon{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Register | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
+{% block extra_head %}
     <style>
         .auth-container {
             width: min(500px, 92%);
-            margin: 60px auto;
+            margin: 40px auto 80px auto;
         }
 
         .auth-card {
-            padding: 32px;
-            border: 1px solid #1d3448;
-            border-radius: 12px;
-            background: rgba(8, 17, 28, 0.9);
+            padding: 36px 32px;
+            border: 1px solid var(--border-card, #cbd5e1);
+            border-radius: var(--radius-lg, 12px);
+            background: var(--surface, #ffffff);
+            color: var(--text-primary, #0f172a);
+            box-shadow: var(--shadow-card);
         }
 
         .auth-card h1 {
             margin-top: 0;
+            color: var(--text-primary, #0f172a);
         }
 
         .auth-form {
@@ -44,84 +33,88 @@
         .auth-form label {
             display: block;
             margin-bottom: 7px;
-            color: #8295a8;
+            color: var(--text-secondary, #64748b);
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: 0.6px;
+            text-transform: uppercase;
         }
 
         .auth-form input {
             width: 100%;
             box-sizing: border-box;
             padding: 12px 14px;
-            border: 1px solid #294258;
-            border-radius: 7px;
-            background: #08131f;
-            color: #d8e4ed;
+            border: 1px solid var(--border-card, #cbd5e1);
+            border-radius: var(--radius-sm, 7px);
+            background: var(--surface-input, #ffffff);
+            color: var(--text-primary, #0f172a);
+            font-size: 14px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--accent-cyan, #0284c7);
+            box-shadow: 0 0 0 3px var(--accent-cyan-subtle);
         }
 
         .auth-form button {
             padding: 13px;
             border: 0;
-            border-radius: 7px;
+            border-radius: var(--radius-sm, 7px);
             cursor: pointer;
             font-weight: 700;
+            background: var(--accent-emerald, #059669);
+            color: var(--text-on-accent, #ffffff);
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+
+        .auth-form button:hover {
+            filter: brightness(1.08);
+            transform: translateY(-1px);
         }
 
         .auth-error,
         .auth-success {
             margin-top: 18px;
-            padding: 12px;
-            border-radius: 7px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm, 7px);
+            font-size: 13px;
         }
 
         .auth-error {
-            color: #ff8e98;
-            background: rgba(150, 35, 45, 0.15);
+            color: var(--sev-critical);
+            background: var(--sev-critical-bg);
+            border: 1px solid var(--sev-critical-border);
         }
 
         .auth-success {
-            color: #6de0ae;
-            background: rgba(25, 125, 85, 0.15);
+            color: var(--accent-emerald);
+            background: var(--accent-emerald-bg);
+            border: 1px solid var(--accent-emerald-glow);
         }
 
         .auth-footer {
-            margin-top: 20px;
-            color: #8295a8;
+            margin-top: 24px;
+            color: var(--text-secondary, #64748b);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .auth-footer a {
+            color: var(--accent-cyan, #0284c7);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
         }
     </style>
-</head>
+{% endblock %}
 
-
-<body>
-
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('home') }}"
-            class="nav-link"
-        >
-            Home
-        </a>
-
-        <a
-            href="{{ url_for('login') }}"
-            class="nav-link"
-        >
-            Login
-        </a>
-
-    </div>
-
-</nav>
-
-
+{% block content %}
 <main class="auth-container">
 
     <div class="auth-card">
@@ -253,7 +246,4 @@
     </div>
 
 </main>
-
-</body>
-
-</html>
+{% endblock %}

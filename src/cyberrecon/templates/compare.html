@@ -1,61 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "compare" %}
 
-<head>
+{% block title %}Compare Assessments | CyberRecon{% endblock %}
 
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Compare Assessments | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
-</head>
-
-
-<body>
-
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('dashboard') }}"
-            class="nav-link"
-        >
-            Dashboard
-        </a>
-
-        <a
-            href="{{ url_for('history') }}"
-            class="nav-link"
-        >
-            Scan History
-        </a>
-
-        <div class="nav-status">
-            HISTORICAL COMPARISON
-        </div>
-
-    </div>
-
-</nav>
-
-
+{% block content %}
 <main class="container">
 
 <section class="history-section">
@@ -500,7 +448,7 @@
         </a>
 
         <a
-            href="{{ url_for('home') }}"
+            href="{{ url_for('new_assessment') }}"
             class="back-button"
         >
             New Assessment
@@ -511,7 +459,4 @@
 </section>
 
 </main>
-
-</body>
-
-</html>
+{% endblock %}
