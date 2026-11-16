@@ -399,13 +399,13 @@ if __name__ == "__main__":
 
     print(
         "Listening on: "
-        "http://127.0.0.1:5001"
+        "http://127.0.0.1:5002"
     )
 
     print()
 
     app.run(
         host="127.0.0.1",
-        port=5001,
+        port=5002,
         debug=False,
     )
