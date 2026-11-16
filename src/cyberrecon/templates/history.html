@@ -1,95 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "history" %}
 
-<head>
-    <meta charset="UTF-8">
+{% block title %}Scan History | CyberRecon{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Scan History | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-</head>
-
-<body>
-
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('home') }}"
-            class="nav-link"
-        >
-            New Assessment
-        </a>
-
-        <a
-            href="{{ url_for('history') }}"
-            class="nav-link"
-        >
-            Scan History
-        </a>
-
-        <a
-            href="{{ url_for('compare_scans') }}"
-            class="nav-link"
-        >
-            Compare
-        </a>
-
-        {% if current_user_id %}
-
-            <span class="nav-user">
-                {{ current_username }}
-            </span>
-
-            <a
-                href="{{ url_for('logout') }}"
-                class="nav-link"
-            >
-                Logout
-            </a>
-
-        {% else %}
-
-            <a
-                href="{{ url_for('login') }}"
-                class="nav-link"
-            >
-                Login
-            </a>
-
-            <a
-                href="{{ url_for('register') }}"
-                class="nav-link"
-            >
-                Register
-            </a>
-
-        {% endif %}
-
-        <div class="nav-status">
-            ANALYTICS DASHBOARD
-        </div>
-
-    </div>
-
-</nav>
-
-
+{% block content %}
 <main class="container">
 
 <section class="history-section">
@@ -239,7 +153,7 @@
 
 
     <a
-        href="{{ url_for('home') }}"
+        href="{{ url_for('new_assessment') }}"
         class="back-button"
     >
         ← New Assessment
@@ -248,7 +162,4 @@
 </section>
 
 </main>
-
-</body>
-
-</html>
+{% endblock %}

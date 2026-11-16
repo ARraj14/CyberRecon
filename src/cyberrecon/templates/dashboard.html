@@ -1,397 +1,744 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Dashboard | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
-</head>
-
-
-<body>
-
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('home') }}"
-            class="nav-link"
-        >
-            New Assessment
-        </a>
-
-        <a
-            href="{{ url_for('history') }}"
-            class="nav-link"
-        >
-            Scan History
-        </a>
-
-        <a
-            href="{{ url_for('compare_scans') }}"
-            class="nav-link"
-        >
-            Compare
-        </a>
-
-        {% if current_user_id %}
-
-            <span class="nav-user">
-                {{ current_username }}
-            </span>
-
-            <a
-                href="{{ url_for('logout') }}"
-                class="nav-link"
-            >
-                Logout
-            </a>
-
-        {% else %}
-
-            <a
-                href="{{ url_for('login') }}"
-                class="nav-link"
-            >
-                Login
-            </a>
-
-            <a
-                href="{{ url_for('register') }}"
-                class="nav-link"
-            >
-                Register
-            </a>
-
-        {% endif %}
-
-        <div class="nav-status">
-            ANALYTICS DASHBOARD
-        </div>
-
-    </div>
-
-</nav>
-
-
-<main class="container">
-
-<section class="dashboard-section">
-
-    <div class="tag">
-        SECURITY ANALYTICS
-    </div>
-
-    <h1>
-        CyberRecon
-        <span>Dashboard.</span>
-    </h1>
-
-    <p class="subtitle">
-        Overview of stored assessments,
-        findings and recent activity.
-    </p>
-
-
-    <div class="dashboard-overview">
-
-        <div class="dashboard-card">
-
-            <span>
-                TOTAL ASSESSMENTS
-            </span>
-
-            <strong>
-                {{ analytics.overview.total_scans }}
-            </strong>
-
-        </div>
-
-
-        <div class="dashboard-card">
-
-            <span>
-                SUCCESSFUL
-            </span>
-
-            <strong class="dashboard-success">
-                {{ analytics.overview.successful_scans }}
-            </strong>
-
-        </div>
-
-
-        <div class="dashboard-card">
-
-            <span>
-                FAILED
-            </span>
-
-            <strong class="dashboard-failed">
-                {{ analytics.overview.failed_scans }}
-            </strong>
-
-        </div>
-
-
-        <div class="dashboard-card">
-
-            <span>
-                UNIQUE TARGETS
-            </span>
-
-            <strong>
-                {{ analytics.overview.unique_targets }}
-            </strong>
-
-        </div>
-
-
-        <div class="dashboard-card">
-
-            <span>
-                SUCCESS RATE
-            </span>
-
-            <strong>
-                {{ analytics.success_rate }}%
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="section-heading">
-
-        <h2>
-            Finding Severity
-        </h2>
-
-        <p>
-            Severity distribution across
-            all stored assessments.
-        </p>
-
-    </div>
-
-
-    <div class="dashboard-severity">
-
-        <div class="severity-stat">
-
-            <span>
-                TOTAL FINDINGS
-            </span>
-
-            <strong>
-                {{ analytics.severity.total_findings }}
-            </strong>
-
-        </div>
-
-
-        <div class="severity-stat severity-high">
-
-            <span>
-                HIGH
-            </span>
-
-            <strong>
-                {{ analytics.severity.high_count }}
-            </strong>
-
-        </div>
-
-
-        <div class="severity-stat severity-medium">
-
-            <span>
-                MEDIUM
-            </span>
-
-            <strong>
-                {{ analytics.severity.medium_count }}
-            </strong>
-
-        </div>
-
-
-        <div class="severity-stat severity-low">
-
-            <span>
-                LOW
-            </span>
-
-            <strong>
-                {{ analytics.severity.low_count }}
-            </strong>
-
-        </div>
-
-
-        <div class="severity-stat severity-info">
-
-            <span>
-                INFO
-            </span>
-
-            <strong>
-                {{ analytics.severity.info_count }}
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <div class="dashboard-grid">
-
-        <section>
-
-            <div class="section-heading">
-
-                <h2>
-                    Recent Assessments
-                </h2>
-
-                <p>
-                    Latest CyberRecon activity.
-                </p>
-
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Security Command Center | CyberRecon{% endblock %}
+
+{% block content %}
+<main class="container dashboard-main-container">
+
+    <!-- =====================================================
+         SECTION A: COMPACT DASHBOARD HEADER & CONTROLS
+         ===================================================== -->
+    <header class="cmd-header" aria-labelledby="cmd-title">
+        <div class="cmd-header-text">
+            <div class="cmd-eyebrow">
+                <span class="cmd-eyebrow-pulse" aria-hidden="true"></span>
+                SECURITY ANALYTICS
             </div>
+            <h1 id="cmd-title" class="cmd-title">
+                Security <span>Command Center</span>
+            </h1>
+            <p class="cmd-subtitle">
+                Operational intelligence, threat severity distribution, and real-time posture analytics across authorized targets.
+            </p>
+        </div>
 
-
-            <div class="dashboard-panel">
-
-                {% for scan in analytics.recent_scans %}
-
-                <a
-                    href="{{ url_for('scan_detail', scan_id=scan.scan_id) }}"
-                    class="recent-scan-row"
-                >
-
-                    <div>
-
-                        <span class="scan-code">
-                            {{ scan.scan_id }}
-                        </span>
-
-                        <strong>
-                            {{ scan.target }}
-                        </strong>
-
-                        <p>
-                            {{ scan.started_at }}
-                        </p>
-
-                    </div>
-
-
-                    {% if scan.recon_status == "Completed" %}
-
-                    <span class="history-status success">
-                        Completed
-                    </span>
-
-                    {% else %}
-
-                    <span class="history-status failed-text">
-                        Failed
-                    </span>
-
-                    {% endif %}
-
+        <div class="cmd-header-controls">
+            <!-- Timeframe Filter -->
+            <nav class="timeframe-selector" aria-label="Assessment Date Range">
+                <a href="{{ url_for('dashboard', range='24h') }}" 
+                   class="timeframe-btn {% if active_range == '24h' %}active{% endif %}"
+                   title="View assessments in the last 24 hours">
+                   24h
                 </a>
+                <a href="{{ url_for('dashboard', range='7d') }}" 
+                   class="timeframe-btn {% if active_range == '7d' %}active{% endif %}"
+                   title="View assessments in the last 7 days">
+                   7d
+                </a>
+                <a href="{{ url_for('dashboard', range='30d') }}" 
+                   class="timeframe-btn {% if active_range == '30d' %}active{% endif %}"
+                   title="View assessments in the last 30 days">
+                   30d
+                </a>
+                <a href="{{ url_for('dashboard', range='all') }}" 
+                   class="timeframe-btn {% if active_range == 'all' or not active_range %}active{% endif %}"
+                   title="View all recorded assessments">
+                   All Time
+                </a>
+            </nav>
 
-                {% endfor %}
+            <!-- Refresh Button -->
+            <a href="{{ url_for('dashboard', range=active_range) }}" 
+               class="btn-cmd-secondary btn-cmd-icon" 
+               id="btn-dashboard-refresh" 
+               title="Refresh live security analytics"
+               aria-label="Refresh dashboard data">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+            </a>
 
+            <!-- Primary Action -->
+            <a href="{{ url_for('new_assessment') }}" class="btn-cmd-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>New Assessment</span>
+            </a>
+        </div>
+    </header>
+
+    {% if analytics.overview.total_scans == 0 and active_range == 'all' %}
+    <!-- =====================================================
+         EMPTY STATE: FIRST-TIME USER (ZERO ASSESSMENTS IN DB)
+         ===================================================== -->
+    <section class="cmd-empty-welcome" aria-labelledby="welcome-title">
+        <div class="empty-welcome-icon" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"></path>
+                <path d="M9 12l2 2 4-4"></path>
+            </svg>
+        </div>
+        <h2 id="welcome-title" class="empty-welcome-title">Welcome to CyberRecon Command Center</h2>
+        <p class="empty-welcome-desc">
+            You haven't conducted any reconnaissance assessments yet. Once you launch an authorized assessment against an endpoint, your threat distribution, posture grade, and activity telemetry will automatically populate here.
+        </p>
+        <div class="empty-welcome-actions">
+            <a href="{{ url_for('new_assessment') }}" class="btn-cmd-primary btn-lg">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Launch Your First Assessment</span>
+            </a>
+        </div>
+    </section>
+
+    {% elif analytics.overview.total_scans == 0 %}
+    <!-- =====================================================
+         EMPTY STATE: FILTERED RANGE HAS NO ACTIVITY
+         ===================================================== -->
+    <section class="cmd-empty-filtered" aria-labelledby="empty-filtered-title">
+        <div class="empty-filtered-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <h2 id="empty-filtered-title" class="empty-filtered-title">No assessment activity in {{ analytics.range_label }}</h2>
+        <p class="empty-filtered-desc">
+            No reconnaissance records match this timeframe. Switch to a broader date range or launch a new assessment.
+        </p>
+        <div class="empty-filtered-actions">
+            <a href="{{ url_for('dashboard', range='all') }}" class="btn-cmd-secondary">
+                View All Time Activity
+            </a>
+            <a href="{{ url_for('new_assessment') }}" class="btn-cmd-primary">
+                Run Assessment Now
+            </a>
+        </div>
+    </section>
+
+    {% else %}
+
+    <!-- =====================================================
+         SECTION B: FIVE HIGH-VALUE KPI CARDS
+         ===================================================== -->
+    <section class="cmd-kpi-grid" aria-label="Core Performance Indicators">
+        <!-- 1. Total Assessments -->
+        <article class="cmd-kpi-card" tabindex="0">
+            <div class="kpi-card-top">
+                <span class="kpi-label">TOTAL ASSESSMENTS</span>
+                <span class="kpi-icon-wrap" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value-row">
+                <strong class="kpi-value">{{ analytics.overview.total_scans }}</strong>
+            </div>
+            <div class="kpi-meta-row">
+                <span class="kpi-subtext">{{ analytics.range_label }} scope</span>
+            </div>
+        </article>
+
+        <!-- 2. Successful Assessments -->
+        <article class="cmd-kpi-card" tabindex="0">
+            <div class="kpi-card-top">
+                <span class="kpi-label">SUCCESSFUL</span>
+                <span class="kpi-icon-wrap" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value-row">
+                <strong class="kpi-value text-mint">{{ analytics.overview.successful_scans }}</strong>
+            </div>
+            <div class="kpi-meta-row">
+                <span class="kpi-subtext"><span class="kpi-chip-mint">{{ analytics.success_rate }}%</span> completion rate</span>
+            </div>
+        </article>
+
+        <!-- 3. Failed Assessments -->
+        <article class="cmd-kpi-card" tabindex="0">
+            <div class="kpi-card-top">
+                <span class="kpi-label">FAILED PROBES</span>
+                <span class="kpi-icon-wrap" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{% if analytics.overview.failed_scans > 0 %}var(--color-critical){% else %}var(--text-dim){% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value-row">
+                <strong class="kpi-value {% if analytics.overview.failed_scans > 0 %}text-critical{% endif %}">
+                    {{ analytics.overview.failed_scans }}
+                </strong>
+            </div>
+            <div class="kpi-meta-row">
+                <span class="kpi-subtext">
+                    {% if analytics.overview.failed_scans > 0 %}
+                    Network or target unreachable
+                    {% else %}
+                    Zero probe aborts
+                    {% endif %}
+                </span>
+            </div>
+        </article>
+
+        <!-- 4. Total Findings -->
+        <article class="cmd-kpi-card" tabindex="0">
+            <div class="kpi-card-top">
+                <span class="kpi-label">OBSERVED FINDINGS</span>
+                <span class="kpi-icon-wrap" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-medium)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value-row">
+                <strong class="kpi-value text-amber">{{ analytics.severity.total_findings }}</strong>
+            </div>
+            <div class="kpi-meta-row">
+                <span class="kpi-subtext">{{ analytics.insights.distinct_finding_types }} distinct misconfigurations</span>
+            </div>
+        </article>
+
+        <!-- 5. Unique Targets -->
+        <article class="cmd-kpi-card" tabindex="0">
+            <div class="kpi-card-top">
+                <span class="kpi-label">UNIQUE TARGETS</span>
+                <span class="kpi-icon-wrap" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value-row">
+                <strong class="kpi-value">{{ analytics.overview.unique_targets }}</strong>
+            </div>
+            <div class="kpi-meta-row">
+                <span class="kpi-subtext">Distinct web endpoints audited</span>
+            </div>
+        </article>
+    </section>
+
+    <!-- =====================================================
+         SECTION C: TWO-COLUMN ANALYTICAL HUB
+         ===================================================== -->
+    <div class="cmd-hub-grid">
+        
+        <!-- LEFT: Finding Severity Distribution -->
+        <section class="cmd-panel-card" aria-labelledby="threat-landscape-heading">
+            <div class="cmd-panel-header">
+                <div>
+                    <h2 id="threat-landscape-heading" class="cmd-panel-title">Threat Landscape &amp; Severity Distribution</h2>
+                    <p class="cmd-panel-subtitle">Vulnerability impact breakdown across {{ analytics.range_label|lower }}</p>
+                </div>
+                <div class="cmd-panel-badge">
+                    {{ analytics.severity.total_findings }} total
+                </div>
             </div>
 
+            {% if analytics.severity.total_findings > 0 %}
+            {% set total = analytics.severity.total_findings %}
+            {% set high_pct = ((analytics.severity.high_count / total) * 100)|round(1) %}
+            {% set med_pct = ((analytics.severity.medium_count / total) * 100)|round(1) %}
+            {% set low_pct = ((analytics.severity.low_count / total) * 100)|round(1) %}
+            {% set info_pct = ((analytics.severity.info_count / total) * 100)|round(1) %}
+
+            <!-- Proportional Stacked Severity Bar -->
+            <div class="severity-stacked-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Finding Severity Proportions">
+                {% if analytics.severity.high_count > 0 %}
+                <div class="stacked-bar-segment seg-high" style="width: {{ high_pct }}%;" title="High: {{ analytics.severity.high_count }} ({{ high_pct }}%)"></div>
+                {% endif %}
+                {% if analytics.severity.medium_count > 0 %}
+                <div class="stacked-bar-segment seg-medium" style="width: {{ med_pct }}%;" title="Medium: {{ analytics.severity.medium_count }} ({{ med_pct }}%)"></div>
+                {% endif %}
+                {% if analytics.severity.low_count > 0 %}
+                <div class="stacked-bar-segment seg-low" style="width: {{ low_pct }}%;" title="Low: {{ analytics.severity.low_count }} ({{ low_pct }}%)"></div>
+                {% endif %}
+                {% if analytics.severity.info_count > 0 %}
+                <div class="stacked-bar-segment seg-info" style="width: {{ info_pct }}%;" title="Info: {{ analytics.severity.info_count }} ({{ info_pct }}%)"></div>
+                {% endif %}
+            </div>
+
+            <!-- Severity Categories Grid -->
+            <div class="severity-tiles-grid">
+                <!-- High Tile -->
+                <button type="button" class="severity-tile tile-high" data-filter-sev="High" title="Click to filter recent table by High severity">
+                    <div class="tile-header">
+                        <span class="tile-dot"></span>
+                        <span class="tile-name">HIGH</span>
+                        <span class="tile-pct">{{ high_pct }}%</span>
+                    </div>
+                    <strong class="tile-count">{{ analytics.severity.high_count }}</strong>
+                    <span class="tile-desc">Immediate action</span>
+                </button>
+
+                <!-- Medium Tile -->
+                <button type="button" class="severity-tile tile-medium" data-filter-sev="Medium" title="Click to filter recent table by Medium severity">
+                    <div class="tile-header">
+                        <span class="tile-dot"></span>
+                        <span class="tile-name">MEDIUM</span>
+                        <span class="tile-pct">{{ med_pct }}%</span>
+                    </div>
+                    <strong class="tile-count">{{ analytics.severity.medium_count }}</strong>
+                    <span class="tile-desc">Defensive hardening</span>
+                </button>
+
+                <!-- Low Tile -->
+                <button type="button" class="severity-tile tile-low" data-filter-sev="Low" title="Click to filter recent table by Low severity">
+                    <div class="tile-header">
+                        <span class="tile-dot"></span>
+                        <span class="tile-name">LOW</span>
+                        <span class="tile-pct">{{ low_pct }}%</span>
+                    </div>
+                    <strong class="tile-count">{{ analytics.severity.low_count }}</strong>
+                    <span class="tile-desc">Minor hygiene items</span>
+                </button>
+
+                <!-- Info Tile -->
+                <button type="button" class="severity-tile tile-info" data-filter-sev="Info" title="Click to filter recent table by Informational items">
+                    <div class="tile-header">
+                        <span class="tile-dot"></span>
+                        <span class="tile-name">INFO</span>
+                        <span class="tile-pct">{{ info_pct }}%</span>
+                    </div>
+                    <strong class="tile-count">{{ analytics.severity.info_count }}</strong>
+                    <span class="tile-desc">Telemetry &amp; headers</span>
+                </button>
+            </div>
+
+            {% else %}
+            <!-- Calm zero-findings state -->
+            <div class="cmd-inner-empty">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span>Zero security misconfigurations detected in this timeframe.</span>
+            </div>
+            {% endif %}
         </section>
 
-
-        <section>
-
-            <div class="section-heading">
-
-                <h2>
-                    Common Findings
-                </h2>
-
-                <p>
-                    Most frequently detected findings.
-                </p>
-
+        <!-- RIGHT: Assessment Activity Over Time -->
+        <section class="cmd-panel-card" aria-labelledby="activity-timeline-heading">
+            <div class="cmd-panel-header">
+                <div>
+                    <h2 id="activity-timeline-heading" class="cmd-panel-title">Assessment Activity</h2>
+                    <p class="cmd-panel-subtitle">Execution frequency over {{ analytics.range_label|lower }}</p>
+                </div>
+                <div class="cmd-panel-badge">
+                    {{ analytics.overview.total_scans }} total runs
+                </div>
             </div>
 
-
-            <div class="dashboard-panel">
-
-                {% for finding in analytics.common_findings %}
-
-                <div class="common-finding-row">
-
-                    <div>
-
-                        <span class="finding-id">
-                            {{ finding.finding_code }}
-                        </span>
-
-                        <strong>
-                            {{ finding.name }}
-                        </strong>
-
+            <!-- Activity Bar Chart (CSS/SVG Responsive Bars) -->
+            <div class="activity-chart-container" aria-label="Assessment Activity Bar Chart">
+                <div class="activity-chart-bars">
+                    {% for day in analytics.activity_timeline %}
+                    {% set max_val = analytics.max_activity %}
+                    {% if max_val > 0 %}
+                        {% set bar_height = (day.count / max_val * 100)|round %}
+                    {% else %}
+                        {% set bar_height = 0 %}
+                    {% endif %}
+                    <div class="chart-col" tabindex="0">
+                        <div class="chart-tooltip">
+                            <strong>{{ day.label }}</strong>: {{ day.count }} assessment{% if day.count != 1 %}s{% endif %}
+                        </div>
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar {% if day.count > 0 %}has-activity{% endif %}" 
+                                 style="height: {% if day.count > 0 %}{{ [bar_height, 12]|max }}{% else %}4{% endif %}%;">
+                            </div>
+                        </div>
+                        <span class="chart-axis-label">{{ day.label }}</span>
                     </div>
+                    {% endfor %}
+                </div>
+            </div>
 
+            <div class="chart-caption-row">
+                <span class="chart-hint">Hover bars to inspect exact execution telemetry</span>
+                <span class="chart-range-indicator">{{ analytics.activity_timeline[0].label }} – {{ analytics.activity_timeline[-1].label }}</span>
+            </div>
+        </section>
 
-                    <div class="finding-frequency">
+    </div>
 
-                        <span
-                            class="severity-badge severity-{{ finding.severity|lower }}"
-                        >
-                            {{ finding.severity }}
-                        </span>
+    <!-- =====================================================
+         SECTION D: RECENT ASSESSMENTS TABLE
+         ===================================================== -->
+    <section class="cmd-panel-card mt-24" aria-labelledby="recent-assessments-heading">
+        <div class="cmd-table-header-wrap">
+            <div>
+                <h2 id="recent-assessments-heading" class="cmd-panel-title">Recent Assessments</h2>
+                <p class="cmd-panel-subtitle">Latest reconnaissance executions and diagnostic status</p>
+            </div>
 
-                        <strong>
-                            {{ finding.occurrence_count }}×
-                        </strong>
-
-                    </div>
-
+            <div class="table-controls-bar">
+                <!-- Search Filter Input -->
+                <div class="search-input-wrap">
+                    <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="dashboard-table-search" class="cmd-table-search" placeholder="Filter by target or Scan ID..." aria-label="Filter recent assessments">
                 </div>
 
-                {% endfor %}
+                <!-- Status Select Filter -->
+                <select id="dashboard-status-filter" class="cmd-table-select" aria-label="Filter by scan status">
+                    <option value="all">All Status</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Failed">Failed</option>
+                </select>
 
+                <!-- Full Scan History Link -->
+                <a href="{{ url_for('history') }}" class="btn-cmd-link">
+                    <span>Full Scan History</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="cmd-table-responsive-wrapper">
+            <table class="cmd-dense-table" id="dashboard-assessments-table">
+                <thead>
+                    <tr>
+                        <th scope="col">TARGET</th>
+                        <th scope="col">SCAN ID</th>
+                        <th scope="col">TIMESTAMP</th>
+                        <th scope="col">STATUS</th>
+                        <th scope="col">FINDINGS</th>
+                        <th scope="col">SEVERITY</th>
+                        <th scope="col" class="th-actions">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in analytics.recent_scans %}
+                    <tr class="assessment-data-row" 
+                        data-target="{{ scan.target|lower }}" 
+                        data-scan-id="{{ scan.scan_id|lower }}" 
+                        data-status="{{ scan.recon_status }}">
+                        <td class="td-target">
+                            <span class="target-host-cell" title="{{ scan.target }}">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="target-globe-icon" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                                <strong>{{ scan.target }}</strong>
+                            </span>
+                        </td>
+                        <td class="td-scan-id">
+                            <a href="{{ url_for('scan_detail', scan_id=scan.scan_id) }}" class="cmd-scan-id-link">
+                                {{ scan.scan_id }}
+                            </a>
+                        </td>
+                        <td class="td-timestamp">
+                            <span class="timestamp-text">{{ scan.started_at }}</span>
+                        </td>
+                        <td class="td-status">
+                            {% if scan.recon_status == 'Completed' %}
+                            <span class="cmd-badge cmd-badge-success">
+                                <span class="badge-dot" aria-hidden="true"></span>
+                                Completed
+                            </span>
+                            {% else %}
+                            <span class="cmd-badge cmd-badge-failed">
+                                <span class="badge-dot" aria-hidden="true"></span>
+                                Failed
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="td-findings-count">
+                            <span class="findings-count-pill">{{ scan.total_findings }}</span>
+                        </td>
+                        <td class="td-severity-summary">
+                            <div class="mini-severity-pills">
+                                {% if scan.high_count and scan.high_count > 0 %}
+                                <span class="mini-pill mini-high" title="{{ scan.high_count }} High severity">H {{ scan.high_count }}</span>
+                                {% endif %}
+                                {% if scan.medium_count and scan.medium_count > 0 %}
+                                <span class="mini-pill mini-medium" title="{{ scan.medium_count }} Medium severity">M {{ scan.medium_count }}</span>
+                                {% endif %}
+                                {% if scan.low_count and scan.low_count > 0 %}
+                                <span class="mini-pill mini-low" title="{{ scan.low_count }} Low severity">L {{ scan.low_count }}</span>
+                                {% endif %}
+                                {% if scan.info_count and scan.info_count > 0 %}
+                                <span class="mini-pill mini-info" title="{{ scan.info_count }} Informational">I {{ scan.info_count }}</span>
+                                {% endif %}
+                                {% if not scan.high_count and not scan.medium_count and not scan.low_count and not scan.info_count %}
+                                <span class="mini-pill mini-clean">Clean</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="td-actions">
+                            <div class="row-actions-group">
+                                <a href="{{ url_for('scan_detail', scan_id=scan.scan_id) }}" class="btn-row-action" title="View Full Security Report">
+                                    Report
+                                </a>
+                                <a href="{{ url_for('new_assessment', target=scan.target) }}" class="btn-row-action btn-row-reassess" title="Re-run assessment for this target">
+                                    Reassess
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Search empty row -->
+            <div id="table-search-empty" class="table-no-results" style="display: none;">
+                No assessments match your search criteria.
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         SECTION E & F: COMMON FINDINGS & SECURITY INSIGHTS
+         ===================================================== -->
+    <div class="cmd-lower-grid mt-24">
+        
+        <!-- SECTION E: Common Findings Intelligence -->
+        <section class="cmd-panel-card" aria-labelledby="common-findings-heading">
+            <div class="cmd-panel-header">
+                <div>
+                    <h2 id="common-findings-heading" class="cmd-panel-title">Common Findings Intelligence</h2>
+                    <p class="cmd-panel-subtitle">Most frequently detected configuration issues across audits</p>
+                </div>
             </div>
 
+            <div class="common-findings-list">
+                {% if analytics.common_findings %}
+                {% for finding in analytics.common_findings %}
+                <div class="common-finding-item">
+                    <div class="cf-rank-badge">{{ finding.rank }}</div>
+                    <div class="cf-body">
+                        <div class="cf-header-row">
+                            <span class="cf-code">{{ finding.finding_code }}</span>
+                            <span class="severity-pill {{ finding.severity|lower }}">{{ finding.severity }}</span>
+                            <strong class="cf-name">{{ finding.name }}</strong>
+                        </div>
+                        <div class="cf-meta-row">
+                            <span class="cf-stat">
+                                <strong>{{ finding.affected_assessments }}</strong> of {{ analytics.overview.total_scans }} assessments affected ({{ finding.affected_pct }}%)
+                            </span>
+                            <span class="cf-stat-sep">•</span>
+                            <span class="cf-stat">
+                                <strong>{{ finding.total_occurrences }}</strong> total observations
+                            </span>
+                        </div>
+                    </div>
+                    <div class="cf-action-col">
+                        {% if finding.latest_scan_id and finding.latest_scan_id.startswith('CR-') %}
+                        <a href="{{ url_for('scan_detail', scan_id=finding.latest_scan_id) }}" class="cf-link" title="Inspect recent assessment with this finding">
+                            <span>Evidence</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('history') }}" class="cf-link" title="View in history">
+                            <span>History</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="cmd-inner-empty">
+                    <p>No recurring configuration issues discovered in this period.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- SECTION F: Security Insights -->
+        <section class="cmd-panel-card" aria-labelledby="security-insights-heading">
+            <div class="cmd-panel-header">
+                <div>
+                    <h2 id="security-insights-heading" class="cmd-panel-title">Operational Security Insights</h2>
+                    <p class="cmd-panel-subtitle">Actionable telemetry derived from database records</p>
+                </div>
+            </div>
+
+            <div class="insights-grid">
+                <!-- Insight 1: Primary Misconfiguration -->
+                <div class="insight-box">
+                    <div class="insight-icon-col">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-critical)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </div>
+                    <div class="insight-text-col">
+                        <span class="insight-label">TOP DETECTED MISCONFIGURATION</span>
+                        {% if analytics.insights.top_misconfiguration %}
+                        <strong class="insight-val">{{ analytics.insights.top_misconfiguration.name }}</strong>
+                        <p class="insight-sub">{{ analytics.insights.top_misconfiguration.finding_code }} appeared in {{ analytics.insights.top_misconfiguration.affected_pct }}% of completed evaluations.</p>
+                        {% else %}
+                        <strong class="insight-val">None Observed</strong>
+                        <p class="insight-sub">No prevalent misconfigurations recorded.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Insight 2: Highest Finding Target -->
+                <div class="insight-box">
+                    <div class="insight-icon-col">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-medium)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div class="insight-text-col">
+                        <span class="insight-label">HIGHEST EXPOSURE TARGET</span>
+                        {% if analytics.insights.highest_risk_target %}
+                        <strong class="insight-val mono-target">{{ analytics.insights.highest_risk_target.target }}</strong>
+                        <p class="insight-sub">{{ analytics.insights.highest_risk_target.finding_count }} total findings recorded across scans.</p>
+                        {% else %}
+                        <strong class="insight-val">None</strong>
+                        <p class="insight-sub">All audited targets have zero findings.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Insight 3: Audited Footprint -->
+                <div class="insight-box">
+                    <div class="insight-icon-col">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                    </div>
+                    <div class="insight-text-col">
+                        <span class="insight-label">AUDITED FOOTPRINT</span>
+                        <strong class="insight-val">{{ analytics.insights.unique_targets }} Endpoints</strong>
+                        <p class="insight-sub">Isolated to current authenticated account in database.</p>
+                    </div>
+                </div>
+
+                <!-- Insight 4: Latest Successful Scan -->
+                <div class="insight-box">
+                    <div class="insight-icon-col">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-mint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="insight-text-col">
+                        <span class="insight-label">LATEST COMPLETED AUDIT</span>
+                        {% if analytics.insights.latest_successful_scan %}
+                        <strong class="insight-val mono-target">{{ analytics.insights.latest_successful_scan.target }}</strong>
+                        <p class="insight-sub">{{ analytics.insights.latest_successful_scan.scan_id }} completed in {{ analytics.insights.latest_successful_scan.duration_ms|round(0) }}ms.</p>
+                        {% else %}
+                        <strong class="insight-val">—</strong>
+                        <p class="insight-sub">No completed assessments recorded.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </section>
 
     </div>
 
-</section>
+    {% endif %}
 
 </main>
+{% endblock %}
 
-</body>
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // -------------------------------------------------------------
+    // Real-time Table Search and Filter (Target & Scan ID)
+    // -------------------------------------------------------------
+    var searchInput = document.getElementById('dashboard-table-search');
+    var statusSelect = document.getElementById('dashboard-status-filter');
+    var rows = document.querySelectorAll('.assessment-data-row');
+    var emptyRow = document.getElementById('table-search-empty');
 
-</html>
+    function applyTableFilter() {
+        if (!rows.length) return;
+        var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        var status = statusSelect ? statusSelect.value : 'all';
+        var visibleCount = 0;
+
+        rows.forEach(function (row) {
+            var target = row.getAttribute('data-target') || '';
+            var scanId = row.getAttribute('data-scan-id') || '';
+            var rowStatus = row.getAttribute('data-status') || '';
+
+            var matchesQuery = !query || target.indexOf(query) !== -1 || scanId.indexOf(query) !== -1;
+            var matchesStatus = (status === 'all') || (rowStatus === status);
+
+            if (matchesQuery && matchesStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (emptyRow) {
+            emptyRow.style.display = (visibleCount === 0) ? 'block' : 'none';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', applyTableFilter);
+    }
+    if (statusSelect) {
+        statusSelect.addEventListener('change', applyTableFilter);
+    }
+
+    // -------------------------------------------------------------
+    // Clickable Severity Tiles Filtering
+    // -------------------------------------------------------------
+    var severityTiles = document.querySelectorAll('.severity-tile');
+    severityTiles.forEach(function (tile) {
+        tile.addEventListener('click', function () {
+            var sev = this.getAttribute('data-filter-sev');
+            if (searchInput) {
+                // Focus table and smooth scroll
+                var tableSection = document.getElementById('recent-assessments-heading');
+                if (tableSection) {
+                    tableSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+    });
+
+    // -------------------------------------------------------------
+    // Refresh Button Animation
+    // -------------------------------------------------------------
+    var btnRefresh = document.getElementById('btn-dashboard-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', function () {
+            this.classList.add('refreshing');
+        });
+    }
+});
+</script>
+{% endblock %}

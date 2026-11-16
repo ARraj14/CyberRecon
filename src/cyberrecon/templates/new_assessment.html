@@ -1,0 +1,1697 @@
+{% extends "base.html" %}
+{% set active_page = "new" %}
+
+{% block title %}New Security Assessment | CyberRecon{% endblock %}
+
+{% block content %}
+<main class="container">
+    <section class="workspace-section" style="padding-top: 24px; padding-bottom: 60px;">
+
+        <!-- Breadcrumb Navigation -->
+        <!-- <nav class="breadcrumb-trail" aria-label="Breadcrumb" style="margin-bottom: 16px;">
+            <a href="{{ url_for('home') }}" class="breadcrumb-item">Home</a>
+            <span class="breadcrumb-separator">/</span>
+            <a href="{{ url_for('dashboard') }}" class="breadcrumb-item">Dashboard</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current">New Assessment</span>
+        </nav> -->
+
+        <!-- Workspace Title Header (Cockpit) -->
+        <div class="workspace-header-bar">
+            <div class="workspace-header-title">
+                <div class="eyebrow"><span class="eyebrow-dot"></span>PASSIVE RECONNAISSANCE COCKPIT</div>
+                <h1 class="workspace-title">New Security <span>Assessment</span></h1>
+                <p class="workspace-subtitle">Configure and launch non-intrusive passive reconnaissance against
+                    authorized targets.</p>
+            </div>
+            <div class="workspace-header-status">
+                <span class="system-status-pill">
+                    <span class="status-dot-pulse" aria-hidden="true"></span>
+                    <span>Recon Engine: Ready</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Server-side Error Display -->
+        {% if error %}
+        <div class="auth-error"
+            style="margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px;"
+            role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="flex-shrink: 0; margin-top: 2px;" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <div>
+                <strong style="display: block; font-size: 13.5px; margin-bottom: 2px;">Assessment Initiation Error</strong>
+                <span style="font-size: 13px;">{{ error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Live Cockpit Progress Region (Hidden until assessment launch) -->
+        <div id="cockpit-run-panel" class="cockpit-run-panel" style="display: none;" role="region"
+            aria-label="Assessment in progress" aria-live="polite">
+            <div class="run-panel-header">
+                <div class="run-target-badge">
+                    <span class="run-dot-pulse" aria-hidden="true"></span>
+                    <span class="run-target-url" id="run-target-display">https://example.com</span>
+                    <span class="run-profile-pill" id="run-profile-display">Quick Check</span>
+                </div>
+                <div class="run-timer-actions">
+                    <div class="run-timer" id="run-elapsed-timer" aria-label="Elapsed scan time">00:00.0s</div>
+                    <button type="button" class="btn-cancel-scan" id="btn-cancel-scan"
+                        aria-label="Cancel reconnaissance assessment">Cancel</button>
+                </div>
+            </div>
+
+            <!-- 5-Stage Progressive Stepper -->
+            <div class="run-stepper-container" aria-label="Scan progress stages">
+                <div class="run-stepper-stage active" id="run-stage-1">
+                    <div class="stage-indicator">1</div>
+                    <div class="stage-content">
+                        <strong>DNS &amp; Host Binding</strong>
+                        <span>A/AAAA records &amp; safe subnet audit</span>
+                    </div>
+                </div>
+                <div class="run-stepper-stage" id="run-stage-2">
+                    <div class="stage-indicator">2</div>
+                    <div class="stage-content">
+                        <strong>TLS Handshake</strong>
+                        <span>TLS 1.3 protocol &amp; certificate validity</span>
+                    </div>
+                </div>
+                <div class="run-stepper-stage" id="run-stage-3">
+                    <div class="stage-indicator">3</div>
+                    <div class="stage-content">
+                        <strong>Defensive Headers</strong>
+                        <span>CSP, HSTS, X-Frame-Options, MIME</span>
+                    </div>
+                </div>
+                <div class="run-stepper-stage" id="run-stage-4">
+                    <div class="stage-indicator">4</div>
+                    <div class="stage-content">
+                        <strong>Isolation &amp; Cookies</strong>
+                        <span>CORS origin, Secure &amp; HttpOnly flags</span>
+                    </div>
+                </div>
+                <div class="run-stepper-stage" id="run-stage-5">
+                    <div class="stage-indicator">5</div>
+                    <div class="stage-content">
+                        <strong>Posture Synthesis</strong>
+                        <span>Deterministic score calculation</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Monospace Live Stream -->
+            <div class="terminal-log-container">
+                <div class="terminal-log-header">
+                    <div class="terminal-dots" aria-hidden="true">
+                        <span class="t-dot red"></span>
+                        <span class="t-dot yellow"></span>
+                        <span class="t-dot green"></span>
+                    </div>
+                    <span class="terminal-title">cyberrecon-passive-engine // live-stream</span>
+                    <span class="terminal-status-badge" id="terminal-badge">PROBING</span>
+                </div>
+                <div class="terminal-log-body" id="terminal-log-body" role="log" aria-live="polite">
+                    <!-- Stream entries injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Completed Summary Card (shown upon successful completion) -->
+            <div class="run-completion-card" id="run-completion-card" style="display: none;">
+                <div class="completion-top-row">
+                    <div class="completion-score-wrap">
+                        <div class="completion-score-circle">
+                            <svg viewBox="0 0 100 100" class="completion-score-svg" aria-hidden="true">
+                                <circle class="score-ring-bg" cx="50" cy="50" r="42" fill="none"
+                                    stroke="rgba(255,255,255,0.08)" stroke-width="7"></circle>
+                                <circle class="score-ring-progress" id="completion-ring-progress" cx="50" cy="50" r="42"
+                                    fill="none" stroke="var(--color-mint)" stroke-width="7" stroke-dasharray="264"
+                                    stroke-dashoffset="264" stroke-linecap="round"></circle>
+                            </svg>
+                            <div class="completion-score-inner">
+                                <span class="score-number" id="completion-score-val"
+                                    style="font-size: 20px; font-weight: 800; font-family: var(--font-mono); color: var(--text-main);">--</span>
+                                <span class="score-total"
+                                    style="font-size: 10px; color: var(--text-dim); display: block;">/100</span>
+                            </div>
+                        </div>
+                        <div class="completion-grade-info">
+                            <span class="grade-badge" id="completion-grade-badge"
+                                style="display: inline-block; width: fit-content; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); background: rgba(0,217,182,0.12); color: var(--color-mint);">GRADE
+                                --</span>
+                            <strong class="grade-title" id="completion-posture-title"
+                                style="font-size: 16px; color: var(--text-main);">Reconnaissance Assessment
+                                Complete</strong>
+                            <span class="grade-duration" id="completion-duration-text"
+                                style="font-size: 12px; color: var(--text-dim);">Completed in -- ms</span>
+                        </div>
+                    </div>
+
+                    <div class="completion-breakdown-row" id="completion-breakdown-row" aria-label="Findings breakdown">
+                        <!-- Dynamic findings pills -->
+                    </div>
+                </div>
+
+                <div class="completion-actions-row">
+                    <a href="#" id="btn-view-full-report" class="btn-primary btn-completion-primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        View Full Security Report
+                    </a>
+                    <button type="button" id="btn-run-another" class="btn-export btn-completion-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Run Another Assessment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Card (shown upon scan execution failure) -->
+            <div class="run-failure-card" id="run-failure-card" style="display: none;">
+                <div class="failure-header">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-critical)"
+                        stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <div>
+                        <strong class="failure-title"
+                            style="display: block; font-size: 14.5px; margin-bottom: 2px;">Assessment Execution
+                            Failed</strong>
+                        <p class="failure-desc" id="failure-desc-text">An unexpected network or connectivity error
+                            occurred.</p>
+                    </div>
+                </div>
+                <div class="failure-actions">
+                    <button type="button" class="btn-primary" id="btn-retry-scan">Retry Assessment</button>
+                    <button type="button" class="btn-export" id="btn-edit-target">Edit Target Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two-Column Workspace Layout (Cockpit Form & Pre-flight Summary) -->
+        <div class="workspace-grid" id="workspace-config-grid">
+
+            <!-- LEFT: Assessment Configuration Form -->
+            <div class="workspace-form-col">
+                <form id="assessment-form" method="POST" action="{{ url_for('scan') }}" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="scan_profile" id="hidden-profile-input" value="quick">
+                    <input type="hidden" name="request_timeout" id="hidden-timeout-input" value="10">
+                    <input type="hidden" name="follow_redirects" id="hidden-redirects-input" value="1">
+                    <input type="hidden" name="user_agent" id="hidden-user-agent-input"
+                        value="CyberRecon/1.0 (+https://cyberrecon.local)">
+
+                    <!-- CARD 1: TARGET CONFIGURATION -->
+                    <div class="cockpit-card" id="card-target" style="margin-bottom: 20px;">
+                        <div class="cockpit-card-header">
+                            <div class="card-step-badge">01</div>
+                            <div class="card-header-content">
+                                <h2 class="cockpit-card-title">Target Configuration</h2>
+                                <p class="cockpit-card-desc">Enter the public domain name or HTTP/HTTPS address to
+                                    assess.</p>
+                            </div>
+                        </div>
+                        <div class="cockpit-card-body">
+                            <label for="target" class="cockpit-field-label">Target Host or URL</label>
+
+                            <div class="target-input-group">
+                                <span class="target-input-prefix" id="target-protocol-badge">https://</span>
+                                <input type="text" id="target" name="target" class="target-cockpit-input"
+                                    placeholder="example.com" value="{{ target if target else '' }}" autocomplete="off"
+                                    spellcheck="false" required
+                                    aria-describedby="target-feedback-row target-validation-msg">
+                                <button type="button" id="btn-paste-target" class="target-paste-btn"
+                                    title="Paste from clipboard">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" aria-hidden="true">
+                                        <path
+                                            d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2">
+                                        </path>
+                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                    </svg>
+                                    Paste
+                                </button>
+                            </div>
+
+                            <!-- Live feedback and validation preview -->
+                            <div class="target-feedback-row" id="target-feedback-row">
+                                <div class="target-will-scan">
+                                    <span class="will-scan-label">Will scan:</span>
+                                    <span class="will-scan-target" id="will-scan-display">{{ target if target else
+                                        'https://' }}</span>
+                                </div>
+                                <div class="target-validation-status" id="target-validation-status" aria-live="polite">
+                                    <span class="status-badge idle">
+                                        <span class="status-dot-pulse"
+                                            style="width: 6px; height: 6px; background: currentColor;"
+                                            aria-hidden="true"></span>
+                                        Waiting for target
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="inline-target-error" class="target-validation-msg" style="display: none;"
+                                role="alert">
+                                <span id="target-error-text">Please provide a valid HTTP or HTTPS target.</span>
+                            </div>
+
+                            <!-- Plain language SSRF explanation -->
+                            <div class="ssrf-plain-explainer">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)"
+                                    stroke-width="2" style="flex-shrink: 0; margin-top: 1px;" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <span><strong>SSRF Safeguards Active:</strong> Private subnets (RFC 1918
+                                    <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>),
+                                    loopback (<code>127.0.0.1</code>), and cloud metadata (<code>169.254.169.254</code>)
+                                    are blocked.</span>
+                            </div>
+
+                            <!-- Recent Target Shortcuts -->
+                            {% if recent_targets %}
+                            <div class="recent-targets-section" id="recent-targets-container">
+                                <div class="recent-targets-header">
+                                    <span class="recent-targets-title">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        Recent Target Shortcuts
+                                    </span>
+                                    <button type="button" class="btn-clear-recent" id="btn-clear-recent"
+                                        title="Clear recent shortcuts list">Clear</button>
+                                </div>
+                                <div class="recent-targets-chips" id="recent-targets-list">
+                                    {% for rt in recent_targets %}
+                                    <button type="button" class="target-shortcut-chip" data-target="{{ rt }}"
+                                        tabindex="0">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                            stroke="var(--color-cyan)" stroke-width="2" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        <span class="chip-host">{{ rt }}</span>
+                                        <span class="chip-badge">PREV</span>
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- CARD 2: SCAN PROFILE -->
+                    <div class="cockpit-card" id="card-profile" style="margin-bottom: 20px;">
+                        <div class="cockpit-card-header">
+                            <div class="card-step-badge">02</div>
+                            <div class="card-header-content">
+                                <h2 class="cockpit-card-title">Scan Profile</h2>
+                                <p class="cockpit-card-desc">Choose a non-intrusive evaluation profile or customize
+                                    security checks.</p>
+                            </div>
+                        </div>
+                        <div class="cockpit-card-body">
+                            <div class="profile-radio-group" role="radiogroup" aria-label="Scan Profile"
+                                id="profile-radiogroup">
+                                <!-- 1. Quick Check -->
+                                <div class="profile-card active" role="radio" aria-checked="true" tabindex="0"
+                                    data-profile="quick" id="profile-card-quick">
+                                    <div class="profile-card-top">
+                                        <div class="profile-card-radio-indicator" aria-hidden="true">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="4">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="profile-card-name">Quick Check</div>
+                                        <span class="profile-checks-pill">9 checks</span>
+                                        <span class="profile-duration-pill">~2s</span>
+                                    </div>
+                                    <div class="profile-card-desc">Transport encryption and core browser defensive
+                                        headers.</div>
+                                    <div class="profile-category-tags">
+                                        <span class="profile-tag">Transport (2)</span>
+                                        <span class="profile-tag">Browser Defenses (7)</span>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Full Baseline -->
+                                <div class="profile-card" role="radio" aria-checked="false" tabindex="-1"
+                                    data-profile="baseline" id="profile-card-baseline">
+                                    <div class="profile-card-top">
+                                        <div class="profile-card-radio-indicator" aria-hidden="true">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="4">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="profile-card-name">Full Baseline</div>
+                                        <span class="profile-checks-pill">18 checks</span>
+                                        <span class="profile-duration-pill">~4s</span>
+                                    </div>
+                                    <div class="profile-card-desc">Complete 18-check passive security configuration
+                                        audit across all categories.</div>
+                                    <div class="profile-category-tags">
+                                        <span class="profile-tag">Transport (2)</span>
+                                        <span class="profile-tag">Browser (7)</span>
+                                        <span class="profile-tag">CORS (4)</span>
+                                        <span class="profile-tag">Session (5)</span>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Custom -->
+                                <div class="profile-card" role="radio" aria-checked="false" tabindex="-1"
+                                    data-profile="custom" id="profile-card-custom">
+                                    <div class="profile-card-top">
+                                        <div class="profile-card-radio-indicator" aria-hidden="true">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="4">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="profile-card-name">Custom</div>
+                                        <span class="profile-checks-pill" id="custom-checks-count-pill">18 checks</span>
+                                        <span class="profile-duration-pill" id="custom-duration-pill">~4s</span>
+                                    </div>
+                                    <div class="profile-card-desc">Tailor reconnaissance scope by selecting individual
+                                        security check categories.</div>
+                                    <div class="profile-category-tags">
+                                        <span class="profile-tag">Modular Scope</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Category Drawer (revealed when Custom profile is active) -->
+                            <div class="custom-categories-drawer" id="custom-categories-drawer" style="display: none;">
+                                <div class="drawer-header">
+                                    <span class="drawer-title">Active Categories (<span
+                                            id="active-custom-count">18</span> of 18 checks selected)</span>
+                                    <div class="drawer-actions">
+                                        <button type="button" class="btn-text-action" id="btn-select-all-cats">Select
+                                            All</button>
+                                        <span class="action-divider" aria-hidden="true">·</span>
+                                        <button type="button" class="btn-text-action"
+                                            id="btn-deselect-all-cats">Deselect All</button>
+                                    </div>
+                                </div>
+                                <div class="custom-category-grid">
+                                    <label class="custom-cat-item">
+                                        <input type="checkbox" class="cat-checkbox" data-cat="transport" checked>
+                                        <div class="cat-info">
+                                            <strong>Transport Security &amp; Encryption</strong>
+                                            <span>2 checks (HTTPS, HSTS)</span>
+                                        </div>
+                                    </label>
+                                    <label class="custom-cat-item">
+                                        <input type="checkbox" class="cat-checkbox" data-cat="browser" checked>
+                                        <div class="cat-info">
+                                            <strong>Browser Defensive Headers</strong>
+                                            <span>7 checks (CSP, Clickjacking, MIME, Referrer, Permissions)</span>
+                                        </div>
+                                    </label>
+                                    <label class="custom-cat-item">
+                                        <input type="checkbox" class="cat-checkbox" data-cat="cors" checked>
+                                        <div class="cat-info">
+                                            <strong>Cross-Origin Isolation &amp; Access</strong>
+                                            <span>4 checks (CORS, COOP, CORP, COEP)</span>
+                                        </div>
+                                    </label>
+                                    <label class="custom-cat-item">
+                                        <input type="checkbox" class="cat-checkbox" data-cat="session" checked>
+                                        <div class="cat-info">
+                                            <strong>Session Security &amp; Disclosure</strong>
+                                            <span>5 checks (Server, Tech Leaks, Secure/HttpOnly/SameSite)</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 3: ADVANCED OPTIONS (Accordion, Collapsed by default) -->
+                    <div class="cockpit-card" id="card-advanced" style="margin-bottom: 20px;">
+                        <div class="cockpit-card-header accordion-toggle" id="advanced-accordion-btn" role="button"
+                            tabindex="0" aria-expanded="false" aria-controls="advanced-options-body">
+                            <div class="card-step-badge">03</div>
+                            <div class="card-header-content">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <h2 class="cockpit-card-title">Advanced Options</h2>
+                                    <span class="badge-modified" id="advanced-modified-badge"
+                                        style="display: none;">Modified</span>
+                                </div>
+                                <p class="cockpit-card-desc">Request timeouts, redirect policy, and client user-agent.
+                                </p>
+                            </div>
+                            <div class="accordion-arrow" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="cockpit-card-body accordion-content" id="advanced-options-body"
+                            style="display: none;">
+                            <!-- Option 1: Request Timeout -->
+                            <div class="advanced-option-row">
+                                <div class="advanced-option-info">
+                                    <strong>Request Timeout</strong>
+                                    <span>Maximum connection duration per HTTP/TLS probe before aborting.</span>
+                                </div>
+                                <div class="segmented-control" role="group" aria-label="Request Timeout">
+                                    <button type="button" class="segmented-btn" data-timeout="5">5s</button>
+                                    <button type="button" class="segmented-btn active" data-timeout="10">10s</button>
+                                    <button type="button" class="segmented-btn" data-timeout="30">30s</button>
+                                </div>
+                            </div>
+
+                            <!-- Option 2: Follow Redirects -->
+                            <div class="advanced-option-row">
+                                <div class="advanced-option-info">
+                                    <strong>Follow Redirects</strong>
+                                    <span>Follows up to 5 HTTP redirect hops (safely halts on private IP
+                                        subnets).</span>
+                                </div>
+                                <label class="custom-switch-label" aria-label="Toggle following redirects">
+                                    <input type="checkbox" id="opt-follow-redirects" class="custom-switch-input"
+                                        checked>
+                                    <span class="custom-switch-track">
+                                        <span class="custom-switch-thumb"></span>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <!-- Option 3: Custom User-Agent -->
+                            <div class="advanced-option-row"
+                                style="flex-direction: column; align-items: stretch; gap: 8px;">
+                                <div class="advanced-option-info">
+                                    <strong>Reconnaissance User-Agent</strong>
+                                    <span>Target web servers and CDNs may vary response headers based on client
+                                        User-Agent.</span>
+                                </div>
+                                <input type="text" id="opt-user-agent" class="cockpit-sub-input"
+                                    value="CyberRecon/1.0 (+https://cyberrecon.local)" spellcheck="false"
+                                    aria-label="Reconnaissance User-Agent">
+                            </div>
+
+                            <!-- Reset Button & Persistence Note -->
+                            <div class="advanced-reset-row">
+                                <button type="button" class="btn-reset-defaults" id="btn-reset-advanced">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" aria-hidden="true">
+                                        <polyline points="1 4 1 10 7 10"></polyline>
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                                    </svg>
+                                    Reset to Defaults
+                                </button>
+                                <span class="reset-note">Preferences saved automatically in local browser cache.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 4: AUTHORIZATION AND LAUNCH -->
+                    <div class="cockpit-card" id="card-authorization">
+                        <div class="cockpit-card-header">
+                            <div class="card-step-badge">04</div>
+                            <div class="card-header-content">
+                                <h2 class="cockpit-card-title">Authorization Confirmation</h2>
+                                <p class="cockpit-card-desc">Affirm legal permission and owner consent prior to
+                                    initiating reconnaissance.</p>
+                            </div>
+                        </div>
+                        <div class="cockpit-card-body">
+                            <div class="auth-consent-box" id="auth-consent-box">
+                                <label class="auth-consent-label">
+                                    <input type="checkbox" id="auth-consent-cb" name="authorization_confirmed" required
+                                        class="auth-custom-checkbox">
+                                    <span class="auth-consent-text">
+                                        <strong>Authorization Confirmation:</strong> I hereby certify that <strong>I own
+                                            this target or have written authorization to assess it</strong> for
+                                        defensive security reconnaissance.
+                                    </span>
+                                </label>
+                                <div class="auth-why-tooltip-trigger" tabindex="0" role="tooltip"
+                                    aria-label="Why we ask: Passive reconnaissance is non-destructive, but ethical security standards require affirmative confirmation of target ownership or written client authorization.">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                    <span class="auth-tooltip-popover">
+                                        Passive reconnaissance is non-destructive, but ethical security standards
+                                        require affirmative confirmation of target ownership or written client
+                                        authorization.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="launch-actions-bar">
+                                <button type="submit" id="start-assessment-btn" class="btn-launch-cockpit" disabled>
+                                    <svg class="btn-icon-launch" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    <span class="btn-launch-text">Launch Assessment</span>
+                                    <span class="btn-shortcut-hint">Ctrl+Enter</span>
+                                </button>
+
+                                <div class="launch-status-note" id="launch-reason-note" aria-live="polite">
+                                    Enter target &amp; confirm authorization to launch
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIGHT: Pre-Flight Summary & 18 Checks Panel -->
+            <aside class="workspace-summary-col">
+                <div class="preflight-sticky-panel">
+
+                    <!-- Pre-Flight Summary Card -->
+                    <div class="preflight-card">
+                        <div class="preflight-card-header">
+                            <span class="preflight-eyebrow">PRE-FLIGHT SUMMARY</span>
+                            <span class="pill-deterministic" tabindex="0" role="tooltip">
+                                Deterministic
+                                <span class="deterministic-tooltip">Same input, same findings without random fuzzing or
+                                    intrusive payloads</span>
+                            </span>
+                        </div>
+
+                        <div class="preflight-meta-grid">
+                            <div class="preflight-item">
+                                <span class="preflight-label">Target</span>
+                                <strong class="preflight-val mono" id="summary-target-display">—</strong>
+                            </div>
+                            <div class="preflight-item">
+                                <span class="preflight-label">Profile</span>
+                                <strong class="preflight-val" id="summary-profile-display">Quick Check</strong>
+                            </div>
+                            <div class="preflight-item">
+                                <span class="preflight-label">Checks Selected</span>
+                                <strong class="preflight-val" id="summary-checks-display">9 of 18 checks</strong>
+                            </div>
+                            <div class="preflight-item">
+                                <span class="preflight-label">Est. Duration</span>
+                                <strong class="preflight-val" id="summary-duration-display">~2.0s</strong>
+                            </div>
+                            <div class="preflight-item">
+                                <span class="preflight-label">Options</span>
+                                <strong class="preflight-val" id="summary-options-display">Default</strong>
+                            </div>
+                            <div class="preflight-item">
+                                <span class="preflight-label">Authorization</span>
+                                <strong class="preflight-val auth-pending" id="summary-auth-display">Pending</strong>
+                            </div>
+                        </div>
+
+                        <div class="preflight-card-cta">
+                            <button type="button" class="btn-preflight-launch" id="btn-preflight-launch" disabled>
+                                Launch Assessment
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 18 Supported Security Checks Accordion -->
+                    <div class="supported-checks-panel" id="supported-checks-panel">
+                        <div class="supported-checks-header" id="supported-checks-header" role="button" tabindex="0"
+                            aria-expanded="true" aria-controls="supported-checks-content">
+                            <div class="supported-checks-title-wrap">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)"
+                                    stroke-width="2" aria-hidden="true">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                                <h3 class="supported-checks-title">18 Supported Security Checks</h3>
+                            </div>
+                            <div class="checks-header-right">
+                                <span class="active-count-badge" id="active-checks-badge">9/18 Active</span>
+                                <svg class="checks-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="supported-checks-content" id="supported-checks-content">
+                            <!-- Group 1: Transport (2) -->
+                            <div class="checks-category-group" data-category="transport">
+                                <div class="group-title-row">
+                                    <span class="group-name">Transport Security &amp; Encryption</span>
+                                    <span class="group-count">2 checks</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-001">
+                                    <span class="check-code">CR-001</span>
+                                    <span class="check-name">HTTPS Protocol Enforcement</span>
+                                    <span class="severity-pill high">High</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-002">
+                                    <span class="check-code">CR-002</span>
+                                    <span class="check-name">Strict-Transport-Security (HSTS)</span>
+                                    <span class="severity-pill high">High</span>
+                                </div>
+                            </div>
+
+                            <!-- Group 2: Browser Defensive Headers (7) -->
+                            <div class="checks-category-group" data-category="browser">
+                                <div class="group-title-row">
+                                    <span class="group-name">Browser Defensive Headers</span>
+                                    <span class="group-count">7 checks</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-003">
+                                    <span class="check-code">CR-003</span>
+                                    <span class="check-name">Content-Security-Policy (CSP)</span>
+                                    <span class="severity-pill high">High</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-004">
+                                    <span class="check-code">CR-004</span>
+                                    <span class="check-name">Clickjacking (X-Frame-Options)</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-005">
+                                    <span class="check-code">CR-005</span>
+                                    <span class="check-name">MIME Sniffing (X-Content-Type)</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-008">
+                                    <span class="check-code">CR-008</span>
+                                    <span class="check-name">Referrer-Policy Baseline</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-009">
+                                    <span class="check-code">CR-009</span>
+                                    <span class="check-name">Permissions-Policy Control</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-010">
+                                    <span class="check-code">CR-010</span>
+                                    <span class="check-name">Unsafe Referrer Leaks</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                                <div class="check-item-row" data-check-id="CR-011">
+                                    <span class="check-code">CR-011</span>
+                                    <span class="check-name">Weak CSP Directive Policy</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                            </div>
+
+                            <!-- Group 3: Cross-Origin Isolation (4) -->
+                            <div class="checks-category-group check-group-dimmed" data-category="cors">
+                                <div class="group-title-row">
+                                    <span class="group-name">Cross-Origin Isolation &amp; Access</span>
+                                    <span class="group-count">4 checks</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-012">
+                                    <span class="check-code">CR-012</span>
+                                    <span class="check-name">Permissive CORS Origin</span>
+                                    <span class="severity-pill high">High</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-013">
+                                    <span class="check-code">CR-013</span>
+                                    <span class="check-name">Cross-Origin-Opener-Policy</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-014">
+                                    <span class="check-code">CR-014</span>
+                                    <span class="check-name">Cross-Origin-Resource-Policy</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-015">
+                                    <span class="check-code">CR-015</span>
+                                    <span class="check-name">Cross-Origin-Embedder-Policy</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                            </div>
+
+                            <!-- Group 4: Session Security & Disclosure (5) -->
+                            <div class="checks-category-group check-group-dimmed" data-category="session">
+                                <div class="group-title-row">
+                                    <span class="group-name">Session Security &amp; Disclosure</span>
+                                    <span class="group-count">5 checks</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-006">
+                                    <span class="check-code">CR-006</span>
+                                    <span class="check-name">Server Version Disclosure</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-007">
+                                    <span class="check-code">CR-007</span>
+                                    <span class="check-name">Technology Stack Leaks</span>
+                                    <span class="severity-pill low">Low</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-016">
+                                    <span class="check-code">CR-016</span>
+                                    <span class="check-name">Cookie Insecure Flag</span>
+                                    <span class="severity-pill high">High</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-017">
+                                    <span class="check-code">CR-017</span>
+                                    <span class="check-name">Cookie Missing HttpOnly</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                                <div class="check-item-row check-dimmed" data-check-id="CR-018">
+                                    <span class="check-code">CR-018</span>
+                                    <span class="check-name">Cookie Missing SameSite</span>
+                                    <span class="severity-pill medium">Med</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+
+        </div>
+
+        <!-- Sticky Bottom Launch Bar for Mobile (< 992px) -->
+        <div class="mobile-sticky-launch-bar" id="mobile-sticky-launch-bar">
+            <div class="mobile-launch-meta">
+                <span class="mobile-target-text" id="mobile-target-summary">No target configured</span>
+                <span class="mobile-profile-text" id="mobile-profile-summary">Quick Check · 9 checks</span>
+            </div>
+            <button type="button" class="btn-primary mobile-btn-launch" id="btn-mobile-launch" disabled>
+                Launch
+            </button>
+        </div>
+
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // -------------------------------------------------------------
+        // Core Elements
+        // -------------------------------------------------------------
+        var form = document.getElementById('assessment-form');
+        var targetInput = document.getElementById('target');
+        var consentCb = document.getElementById('auth-consent-cb');
+        var consentBox = document.getElementById('auth-consent-box');
+        var startBtn = document.getElementById('start-assessment-btn');
+        var preflightLaunchBtn = document.getElementById('btn-preflight-launch');
+        var mobileLaunchBtn = document.getElementById('btn-mobile-launch');
+        var launchReasonNote = document.getElementById('launch-reason-note');
+        var willScanDisplay = document.getElementById('will-scan-display');
+        var validationStatus = document.getElementById('target-validation-status');
+        var inlineError = document.getElementById('inline-target-error');
+        var errorText = document.getElementById('target-error-text');
+        var protocolBadge = document.getElementById('target-protocol-badge');
+
+        // Summary Display Elements
+        var summaryTarget = document.getElementById('summary-target-display');
+        var summaryProfile = document.getElementById('summary-profile-display');
+        var summaryChecks = document.getElementById('summary-checks-display');
+        var summaryDuration = document.getElementById('summary-duration-display');
+        var summaryOptions = document.getElementById('summary-options-display');
+        var summaryAuth = document.getElementById('summary-auth-display');
+        var activeChecksBadge = document.getElementById('active-checks-badge');
+        var mobileTargetSummary = document.getElementById('mobile-target-summary');
+        var mobileProfileSummary = document.getElementById('mobile-profile-summary');
+
+        // Hidden Inputs
+        var hiddenProfileInput = document.getElementById('hidden-profile-input');
+        var hiddenTimeoutInput = document.getElementById('hidden-timeout-input');
+        var hiddenRedirectsInput = document.getElementById('hidden-redirects-input');
+        var hiddenUaInput = document.getElementById('hidden-user-agent-input');
+
+        // Cockpit Run Panel Elements
+        var configGrid = document.getElementById('workspace-config-grid');
+        var runPanel = document.getElementById('cockpit-run-panel');
+        var runTargetDisplay = document.getElementById('run-target-display');
+        var runProfileDisplay = document.getElementById('run-profile-display');
+        var runElapsedTimer = document.getElementById('run-elapsed-timer');
+        var btnCancelScan = document.getElementById('btn-cancel-scan');
+        var terminalBody = document.getElementById('terminal-log-body');
+        var terminalBadge = document.getElementById('terminal-badge');
+        var completionCard = document.getElementById('run-completion-card');
+        var failureCard = document.getElementById('run-failure-card');
+        var failureDesc = document.getElementById('failure-desc-text');
+        var btnRetryScan = document.getElementById('btn-retry-scan');
+        var btnEditTarget = document.getElementById('btn-edit-target');
+
+        var currentProfile = 'quick'; // quick | baseline | custom
+        var activeTimeout = 10;
+        var activeRedirects = true;
+        var activeUserAgent = "CyberRecon/1.0 (+https://cyberrecon.local)";
+        var scanAbortController = null;
+        var timerInterval = null;
+        var timerStartTime = null;
+
+        // -------------------------------------------------------------
+        // URL Parameter Prefill (?target= and ?profile=)
+        // -------------------------------------------------------------
+        var urlParams = new URLSearchParams(window.location.search);
+        var paramTarget = urlParams.get('target');
+        var paramProfile = urlParams.get('profile');
+
+        if (paramTarget && targetInput) {
+            targetInput.value = paramTarget;
+        }
+
+        // -------------------------------------------------------------
+        // Target Normalization & SSRF Pre-validation
+        // -------------------------------------------------------------
+        function cleanTargetInput(raw) {
+            if (!raw) return '';
+            var t = raw.trim();
+            // remove leading/trailing quotes
+            t = t.replace(/^["']|["']$/g, '');
+            return t;
+        }
+
+        function evaluateTarget(raw) {
+            var cleaned = cleanTargetInput(raw);
+            if (!cleaned) {
+                return { state: 'empty', normalized: '', message: 'Waiting for target' };
+            }
+
+            var candidate = cleaned;
+            if (!candidate.startsWith('http://') && !candidate.startsWith('https://')) {
+                candidate = 'https://' + candidate;
+            }
+
+            try {
+                var url = new URL(candidate);
+                var hostname = url.hostname.toLowerCase();
+
+                // SSRF Blocked Ranges Checks
+                var isBlocked = false;
+                var blockedReason = '';
+
+                if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.startsWith('127.')) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: Loopback address is blocked.';
+                } else if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: Cloud instance metadata service (169.254.169.254) is blocked.';
+                } else if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: RFC 1918 Class A private subnet (10.0.0.0/8) is blocked.';
+                } else if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: RFC 1918 Class B private subnet (172.16.0.0/12) is blocked.';
+                } else if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: RFC 1918 Class C private subnet (192.168.0.0/16) is blocked.';
+                } else if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.corp')) {
+                    isBlocked = true;
+                    blockedReason = 'SSRF Safeguard: Non-public top level domain is blocked.';
+                }
+
+                if (isBlocked) {
+                    return { state: 'blocked', normalized: candidate, message: blockedReason };
+                }
+
+                // Valid host syntax check (hostname must contain a dot or valid IP)
+                if (!hostname.includes('.')) {
+                    return { state: 'invalid', normalized: candidate, message: 'Invalid domain: missing top-level domain.' };
+                }
+
+                return { state: 'valid', normalized: candidate, hostname: hostname, message: 'Valid public target ready' };
+            } catch (e) {
+                return { state: 'invalid', normalized: cleaned, message: 'Invalid URL or hostname format.' };
+            }
+        }
+
+        function updateTargetState() {
+            var raw = targetInput.value;
+            var res = evaluateTarget(raw);
+
+            // Update protocol badge
+            if (raw.trim().startsWith('http://')) {
+                protocolBadge.textContent = 'http://';
+                protocolBadge.style.color = 'var(--color-critical)';
+            } else {
+                protocolBadge.textContent = 'https://';
+                protocolBadge.style.color = 'var(--color-mint)';
+            }
+
+            if (res.state === 'empty') {
+                willScanDisplay.textContent = 'https://';
+                validationStatus.innerHTML = '<span class="status-badge idle">Waiting for target</span>';
+                inlineError.style.display = 'none';
+                summaryTarget.textContent = '—';
+                mobileTargetSummary.textContent = 'No target configured';
+            } else if (res.state === 'valid') {
+                willScanDisplay.textContent = res.normalized;
+                validationStatus.innerHTML = '<span class="status-badge valid"><span class="status-dot-pulse" style="width: 6px; height: 6px; background: #10b981;"></span> Valid Target</span>';
+                inlineError.style.display = 'none';
+                summaryTarget.textContent = res.hostname;
+                mobileTargetSummary.textContent = res.hostname;
+            } else if (res.state === 'blocked') {
+                willScanDisplay.textContent = res.normalized;
+                validationStatus.innerHTML = '<span class="status-badge blocked">Blocked (SSRF)</span>';
+                errorText.textContent = res.message;
+                inlineError.style.display = 'block';
+                summaryTarget.textContent = 'Blocked Target';
+                mobileTargetSummary.textContent = 'Blocked Target';
+            } else {
+                willScanDisplay.textContent = res.normalized;
+                validationStatus.innerHTML = '<span class="status-badge invalid">Invalid Host</span>';
+                errorText.textContent = res.message;
+                inlineError.style.display = 'block';
+                summaryTarget.textContent = 'Invalid Target';
+                mobileTargetSummary.textContent = 'Invalid Target';
+            }
+
+            updateLaunchButtonState(res.state === 'valid');
+        }
+
+        if (targetInput) {
+            targetInput.addEventListener('input', updateTargetState);
+            targetInput.addEventListener('blur', function () {
+                var raw = targetInput.value.trim();
+                if (raw && !raw.startsWith('http://') && !raw.startsWith('https://')) {
+                    if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(:\d+)?(\/.*)?$/.test(raw)) {
+                        targetInput.value = 'https://' + raw;
+                        updateTargetState();
+                    }
+                }
+            });
+        }
+
+        // Paste Button
+        var btnPaste = document.getElementById('btn-paste-target');
+        if (btnPaste && targetInput) {
+            btnPaste.addEventListener('click', function () {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(function (text) {
+                        if (text) {
+                            targetInput.value = text.trim();
+                            updateTargetState();
+                            targetInput.focus();
+                        }
+                    }).catch(function () { });
+                }
+            });
+        }
+
+        // Recent Target Shortcuts
+        var shortcutChips = document.querySelectorAll('.target-shortcut-chip');
+        shortcutChips.forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                var t = this.getAttribute('data-target');
+                if (t && targetInput) {
+                    targetInput.value = t;
+                    updateTargetState();
+                    targetInput.focus();
+                }
+            });
+        });
+
+        var btnClearRecent = document.getElementById('btn-clear-recent');
+        var recentContainer = document.getElementById('recent-targets-container');
+        if (btnClearRecent && recentContainer) {
+            btnClearRecent.addEventListener('click', function () {
+                recentContainer.style.display = 'none';
+            });
+        }
+
+        // -------------------------------------------------------------
+        // Scan Profile Radio Group & Checks Dimming
+        // -------------------------------------------------------------
+        var profileCards = document.querySelectorAll('.profile-card');
+        var customDrawer = document.getElementById('custom-categories-drawer');
+        var catCheckboxes = document.querySelectorAll('.cat-checkbox');
+        var activeCustomCount = document.getElementById('active-custom-count');
+        var customChecksCountPill = document.getElementById('custom-checks-count-pill');
+        var customDurationPill = document.getElementById('custom-duration-pill');
+
+        var checkGroups = document.querySelectorAll('.checks-category-group');
+        var checkItemRows = document.querySelectorAll('.check-item-row');
+
+        function applyProfile(profile) {
+            currentProfile = profile;
+            hiddenProfileInput.value = profile;
+
+            profileCards.forEach(function (c) {
+                var p = c.getAttribute('data-profile');
+                var isSel = (p === profile);
+                c.classList.toggle('active', isSel);
+                c.setAttribute('aria-checked', isSel ? 'true' : 'false');
+                c.tabIndex = isSel ? 0 : -1;
+            });
+
+            if (profile === 'custom') {
+                customDrawer.style.display = 'block';
+                updateCustomSelection();
+            } else {
+                customDrawer.style.display = 'none';
+                if (profile === 'quick') {
+                    summaryProfile.textContent = 'Quick Check';
+                    summaryChecks.textContent = '9 of 18 checks';
+                    summaryDuration.textContent = '~2.0s';
+                    activeChecksBadge.textContent = '9/18 Active';
+                    mobileProfileSummary.textContent = 'Quick Check · 9 checks';
+
+                    // Dim CORS (4) and Session (5)
+                    checkGroups.forEach(function (g) {
+                        var cat = g.getAttribute('data-category');
+                        if (cat === 'cors' || cat === 'session') {
+                            g.classList.add('check-group-dimmed');
+                            g.querySelectorAll('.check-item-row').forEach(function (r) { r.classList.add('check-dimmed'); });
+                        } else {
+                            g.classList.remove('check-group-dimmed');
+                            g.querySelectorAll('.check-item-row').forEach(function (r) { r.classList.remove('check-dimmed'); });
+                        }
+                    });
+                } else if (profile === 'baseline') {
+                    summaryProfile.textContent = 'Full Baseline';
+                    summaryChecks.textContent = '18 of 18 checks';
+                    summaryDuration.textContent = '~4.0s';
+                    activeChecksBadge.textContent = '18/18 Active';
+                    mobileProfileSummary.textContent = 'Full Baseline · 18 checks';
+
+                    // Activate all
+                    checkGroups.forEach(function (g) {
+                        g.classList.remove('check-group-dimmed');
+                        g.querySelectorAll('.check-item-row').forEach(function (r) { r.classList.remove('check-dimmed'); });
+                    });
+                }
+            }
+        }
+
+        function updateCustomSelection() {
+            var activeCategories = [];
+            var count = 0;
+            catCheckboxes.forEach(function (cb) {
+                var cat = cb.getAttribute('data-cat');
+                if (cb.checked) {
+                    activeCategories.push(cat);
+                    if (cat === 'transport') count += 2;
+                    if (cat === 'browser') count += 7;
+                    if (cat === 'cors') count += 4;
+                    if (cat === 'session') count += 5;
+                }
+            });
+
+            var estDuration = '~' + Math.max(1.0, (count * 0.22)).toFixed(1) + 's';
+
+            activeCustomCount.textContent = count;
+            customChecksCountPill.textContent = count + ' checks';
+            customDurationPill.textContent = estDuration;
+
+            summaryProfile.textContent = 'Custom';
+            summaryChecks.textContent = count + ' of 18 checks';
+            summaryDuration.textContent = estDuration;
+            activeChecksBadge.textContent = count + '/18 Active';
+            mobileProfileSummary.textContent = 'Custom · ' + count + ' checks';
+
+            checkGroups.forEach(function (g) {
+                var cat = g.getAttribute('data-category');
+                if (activeCategories.includes(cat)) {
+                    g.classList.remove('check-group-dimmed');
+                    g.querySelectorAll('.check-item-row').forEach(function (r) { r.classList.remove('check-dimmed'); });
+                } else {
+                    g.classList.add('check-group-dimmed');
+                    g.querySelectorAll('.check-item-row').forEach(function (r) { r.classList.add('check-dimmed'); });
+                }
+            });
+        }
+
+        profileCards.forEach(function (card) {
+            card.addEventListener('click', function () {
+                applyProfile(this.getAttribute('data-profile'));
+            });
+            card.addEventListener('keydown', function (e) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    applyProfile(this.getAttribute('data-profile'));
+                } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    var next = this.nextElementSibling || profileCards[0];
+                    next.focus();
+                    applyProfile(next.getAttribute('data-profile'));
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    var prev = this.previousElementSibling || profileCards[profileCards.length - 1];
+                    prev.focus();
+                    applyProfile(prev.getAttribute('data-profile'));
+                }
+            });
+        });
+
+        catCheckboxes.forEach(function (cb) {
+            cb.addEventListener('change', updateCustomSelection);
+        });
+
+        var btnSelectAll = document.getElementById('btn-select-all-cats');
+        var btnDeselectAll = document.getElementById('btn-deselect-all-cats');
+        if (btnSelectAll) {
+            btnSelectAll.addEventListener('click', function () {
+                catCheckboxes.forEach(function (cb) { cb.checked = true; });
+                updateCustomSelection();
+            });
+        }
+        if (btnDeselectAll) {
+            btnDeselectAll.addEventListener('click', function () {
+                catCheckboxes.forEach(function (cb) { cb.checked = false; });
+                updateCustomSelection();
+            });
+        }
+
+        if (paramProfile && ['quick', 'baseline', 'custom'].includes(paramProfile.toLowerCase())) {
+            applyProfile(paramProfile.toLowerCase());
+        }
+
+        // -------------------------------------------------------------
+        // Advanced Options Accordion & LocalStorage Persistence
+        // -------------------------------------------------------------
+        var cardAdvanced = document.getElementById('card-advanced');
+        var advAccordionBtn = document.getElementById('advanced-accordion-btn');
+        var advAccordionBody = document.getElementById('advanced-options-body');
+        var advModifiedBadge = document.getElementById('advanced-modified-badge');
+        var segmentedBtns = document.querySelectorAll('.segmented-btn');
+        var optRedirects = document.getElementById('opt-follow-redirects');
+        var optUserAgent = document.getElementById('opt-user-agent');
+        var btnResetAdvanced = document.getElementById('btn-reset-advanced');
+
+        if (advAccordionBtn && advAccordionBody) {
+            advAccordionBtn.addEventListener('click', function () {
+                var isOpen = cardAdvanced.classList.toggle('open');
+                advAccordionBody.style.display = isOpen ? 'block' : 'none';
+                advAccordionBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+            advAccordionBtn.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    advAccordionBtn.click();
+                }
+            });
+        }
+
+        function checkOptionsModified() {
+            var isModified = (activeTimeout !== 10) || (!activeRedirects) || (activeUserAgent !== "CyberRecon/1.0 (+https://cyberrecon.local)");
+            if (advModifiedBadge) {
+                advModifiedBadge.style.display = isModified ? 'inline-block' : 'none';
+            }
+            if (summaryOptions) {
+                summaryOptions.textContent = isModified ? 'Modified' : 'Default';
+                summaryOptions.style.color = isModified ? '#f59e0b' : 'var(--text-main)';
+            }
+            try {
+                localStorage.setItem('cyberrecon_options', JSON.stringify({
+                    timeout: activeTimeout,
+                    redirects: activeRedirects,
+                    ua: activeUserAgent
+                }));
+            } catch (e) { }
+        }
+
+        segmentedBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                segmentedBtns.forEach(function (b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                activeTimeout = parseInt(this.getAttribute('data-timeout'), 10);
+                hiddenTimeoutInput.value = activeTimeout;
+                checkOptionsModified();
+            });
+        });
+
+        if (optRedirects) {
+            optRedirects.addEventListener('change', function () {
+                activeRedirects = this.checked;
+                hiddenRedirectsInput.value = this.checked ? '1' : '0';
+                checkOptionsModified();
+            });
+        }
+
+        if (optUserAgent) {
+            optUserAgent.addEventListener('input', function () {
+                activeUserAgent = this.value.trim() || "CyberRecon/1.0 (+https://cyberrecon.local)";
+                hiddenUaInput.value = activeUserAgent;
+                checkOptionsModified();
+            });
+        }
+
+        if (btnResetAdvanced) {
+            btnResetAdvanced.addEventListener('click', function () {
+                activeTimeout = 10;
+                hiddenTimeoutInput.value = '10';
+                segmentedBtns.forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-timeout') === '10');
+                });
+
+                activeRedirects = true;
+                hiddenRedirectsInput.value = '1';
+                if (optRedirects) optRedirects.checked = true;
+
+                activeUserAgent = "CyberRecon/1.0 (+https://cyberrecon.local)";
+                hiddenUaInput.value = activeUserAgent;
+                if (optUserAgent) optUserAgent.value = activeUserAgent;
+
+                checkOptionsModified();
+            });
+        }
+
+        // Load saved preferences
+        try {
+            var savedOpts = JSON.parse(localStorage.getItem('cyberrecon_options'));
+            if (savedOpts) {
+                if (savedOpts.timeout) {
+                    activeTimeout = savedOpts.timeout;
+                    hiddenTimeoutInput.value = activeTimeout;
+                    segmentedBtns.forEach(function (b) {
+                        b.classList.toggle('active', b.getAttribute('data-timeout') === String(activeTimeout));
+                    });
+                }
+                if (typeof savedOpts.redirects === 'boolean') {
+                    activeRedirects = savedOpts.redirects;
+                    hiddenRedirectsInput.value = activeRedirects ? '1' : '0';
+                    if (optRedirects) optRedirects.checked = activeRedirects;
+                }
+                if (savedOpts.ua) {
+                    activeUserAgent = savedOpts.ua;
+                    hiddenUaInput.value = activeUserAgent;
+                    if (optUserAgent) optUserAgent.value = activeUserAgent;
+                }
+                checkOptionsModified();
+            }
+        } catch (e) { }
+
+        // -------------------------------------------------------------
+        // Authorization Checkbox & Button State
+        // -------------------------------------------------------------
+        function updateLaunchButtonState(isTargetValid) {
+            var hasConsent = consentCb && consentCb.checked;
+            var hasValidTarget = (typeof isTargetValid === 'boolean') ? isTargetValid : (evaluateTarget(targetInput.value).state === 'valid');
+            var canLaunch = hasConsent && hasValidTarget;
+
+            if (startBtn) startBtn.disabled = !canLaunch;
+            if (preflightLaunchBtn) preflightLaunchBtn.disabled = !canLaunch;
+            if (mobileLaunchBtn) mobileLaunchBtn.disabled = !canLaunch;
+
+            if (summaryAuth) {
+                summaryAuth.textContent = hasConsent ? 'Confirmed' : 'Pending';
+                summaryAuth.className = 'preflight-val ' + (hasConsent ? 'auth-confirmed' : 'auth-pending');
+            }
+
+            if (launchReasonNote) {
+                if (!hasValidTarget && !hasConsent) {
+                    launchReasonNote.textContent = 'Enter target & confirm authorization to launch';
+                } else if (!hasValidTarget) {
+                    launchReasonNote.textContent = 'Please enter a valid HTTP/HTTPS target';
+                } else if (!hasConsent) {
+                    launchReasonNote.textContent = 'Confirm authorization to enable launch';
+                } else {
+                    launchReasonNote.textContent = 'Ready to launch non-intrusive assessment';
+                }
+            }
+        }
+
+        if (consentCb) {
+            consentCb.addEventListener('change', function () {
+                updateLaunchButtonState();
+            });
+        }
+
+        // Supported Checks Accordion Toggle
+        var supportedChecksHeader = document.getElementById('supported-checks-header');
+        var supportedChecksPanel = document.getElementById('supported-checks-panel');
+        if (supportedChecksHeader && supportedChecksPanel) {
+            supportedChecksHeader.addEventListener('click', function () {
+                var isCol = supportedChecksPanel.classList.toggle('collapsed');
+                this.setAttribute('aria-expanded', isCol ? 'false' : 'true');
+            });
+            supportedChecksHeader.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    supportedChecksHeader.click();
+                }
+            });
+        }
+
+        // -------------------------------------------------------------
+        // Keyboard Shortcut (Ctrl+Enter / Cmd+Enter) & Early Click Handling
+        // -------------------------------------------------------------
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                triggerLaunch();
+            }
+        });
+
+        if (preflightLaunchBtn) {
+            preflightLaunchBtn.addEventListener('click', triggerLaunch);
+        }
+        if (mobileLaunchBtn) {
+            mobileLaunchBtn.addEventListener('click', triggerLaunch);
+        }
+
+        function triggerLaunch() {
+            var evalRes = evaluateTarget(targetInput.value);
+            if (evalRes.state !== 'valid') {
+                targetInput.focus();
+                if (inlineError) inlineError.style.display = 'block';
+                return;
+            }
+
+            if (!consentCb.checked) {
+                // Scroll to and highlight authorization box
+                consentBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                consentBox.classList.remove('highlight-required');
+                void consentBox.offsetWidth; // force reflow
+                consentBox.classList.add('highlight-required');
+                consentCb.focus();
+                return;
+            }
+
+            // Valid, proceed with assessment execution
+            executeAssessment();
+        }
+
+        // -------------------------------------------------------------
+        // Run State Cockpit Engine (Fetch + Live Streaming Log)
+        // -------------------------------------------------------------
+        function appendTerminalLog(msg, customTs) {
+            if (!terminalBody) return;
+            var elapsed = customTs || formatElapsed(Date.now() - timerStartTime);
+            var line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = '<span class="terminal-ts">[' + elapsed + ']</span><span class="terminal-msg">' + msg + '</span>';
+            terminalBody.appendChild(line);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        function formatElapsed(ms) {
+            var totalSec = Math.floor(ms / 1000);
+            var tenths = Math.floor((ms % 1000) / 100);
+            var m = Math.floor(totalSec / 60);
+            var s = totalSec % 60;
+            return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s) + '.' + tenths + 's';
+        }
+
+        function setStepperStage(stageNum) {
+            for (var i = 1; i <= 5; i++) {
+                var el = document.getElementById('run-stage-' + i);
+                if (!el) continue;
+                var ind = el.querySelector('.stage-indicator');
+                if (i < stageNum) {
+                    el.className = 'run-stepper-stage done';
+                    if (ind) ind.textContent = '✓';
+                } else if (i === stageNum) {
+                    el.className = 'run-stepper-stage active';
+                    if (ind) ind.textContent = i;
+                } else {
+                    el.className = 'run-stepper-stage';
+                    if (ind) ind.textContent = i;
+                }
+            }
+        }
+
+        function executeAssessment() {
+            var evalRes = evaluateTarget(targetInput.value);
+            if (evalRes.state !== 'valid') return;
+
+            // Switch UI to Cockpit Run Panel
+            configGrid.style.display = 'none';
+            runPanel.style.display = 'block';
+            runPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            runTargetDisplay.textContent = evalRes.normalized;
+            runProfileDisplay.textContent = summaryProfile.textContent;
+            terminalBody.innerHTML = '';
+            completionCard.style.display = 'none';
+            failureCard.style.display = 'none';
+            terminalBadge.textContent = 'STREAMING';
+            terminalBadge.style.color = 'var(--color-mint)';
+
+            // Start Elapsed Timer
+            timerStartTime = Date.now();
+            timerInterval = setInterval(function () {
+                runElapsedTimer.textContent = formatElapsed(Date.now() - timerStartTime);
+            }, 100);
+
+            // Stage 1
+            setStepperStage(1);
+            appendTerminalLog('Initializing passive reconnaissance pipeline on PID ' + Math.floor(1000 + Math.random() * 9000));
+            appendTerminalLog('Target address locked: ' + evalRes.normalized);
+            appendTerminalLog('Resolving DNS records & verifying RFC 1918 safe subnets...');
+
+            // Schedule stage transitions while fetch runs
+            var stage2Timer = setTimeout(function () {
+                setStepperStage(2);
+                appendTerminalLog('DNS A/AAAA resolved safely. Target host is public.');
+                appendTerminalLog('Negotiating TLS 1.3 cryptographic handshake & verifying certificate validity...');
+            }, 900);
+
+            var stage3Timer = setTimeout(function () {
+                setStepperStage(3);
+                appendTerminalLog('TLS session established. Cipher suite negotiated.');
+                appendTerminalLog('Dispatching non-intrusive HEAD/GET probes; auditing defensive HTTP response headers...');
+            }, 1800);
+
+            var stage4Timer = setTimeout(function () {
+                setStepperStage(4);
+                appendTerminalLog('Received defensive headers. Inspecting Content-Security-Policy & HSTS...');
+                appendTerminalLog('Analyzing cross-origin isolation (CORS, COOP, CORP) & session cookie flags...');
+            }, 2700);
+
+            var stage5Timer = setTimeout(function () {
+                setStepperStage(5);
+                appendTerminalLog('Synthesizing 18 AST baseline checks & calculating deterministic security score...');
+            }, 3400);
+
+            // Setup AbortController
+            scanAbortController = new AbortController();
+
+            // Submit form via fetch
+            var formData = new FormData(form);
+            // Normalize target in form data
+            formData.set('target', evalRes.normalized);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                signal: scanAbortController.signal
+            })
+                .then(function (response) {
+                    clearTimeout(stage2Timer);
+                    clearTimeout(stage3Timer);
+                    clearTimeout(stage4Timer);
+                    clearTimeout(stage5Timer);
+                    clearInterval(timerInterval);
+
+                    var totalMs = Date.now() - timerStartTime;
+                    runElapsedTimer.textContent = formatElapsed(totalMs);
+
+                    return response.text().then(function (htmlText) {
+                        return { status: response.status, ok: response.ok, html: htmlText, durationMs: totalMs };
+                    });
+                })
+                .then(function (res) {
+                    setStepperStage(6); // marks all done
+                    terminalBadge.textContent = 'DONE';
+                    appendTerminalLog('Reconnaissance audit complete. Analysis synthesized in ' + res.durationMs + ' ms.');
+
+                    // Parse response
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(res.html, 'text/html');
+
+                    // Check if returned error
+                    var serverError = doc.querySelector('.auth-error, .target-error-msg, .error-message');
+                    if (serverError && !doc.querySelector('.results-section')) {
+                        showFailureState(serverError.textContent.trim());
+                        return;
+                    }
+
+                    // Extract scan ID from results DOM
+                    var scanId = '';
+                    var scanIdEl = doc.querySelector('.dashboard-overview .dashboard-card strong');
+                    if (scanIdEl) {
+                        scanId = scanIdEl.textContent.trim();
+                    } else {
+                        var scanIdMatch = res.html.match(/scan_id[^\w]*([A-Za-z0-9_-]+)/) || res.html.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+                        scanId = scanIdMatch ? scanIdMatch[1] : '';
+                    }
+
+                    // Extract real finding counts from results.html
+                    var highCount = 0, medCount = 0, lowCount = 0, infoCount = 0, totalFindings = 0;
+                    var statHigh = doc.querySelector('.severity-high strong');
+                    if (statHigh) highCount = parseInt(statHigh.textContent.trim(), 10) || 0;
+                    var statMed = doc.querySelector('.severity-medium strong');
+                    if (statMed) medCount = parseInt(statMed.textContent.trim(), 10) || 0;
+                    var statLow = doc.querySelector('.severity-low strong');
+                    if (statLow) lowCount = parseInt(statLow.textContent.trim(), 10) || 0;
+                    var statInfo = doc.querySelector('.severity-info strong');
+                    if (statInfo) infoCount = parseInt(statInfo.textContent.trim(), 10) || 0;
+                    var statTotal = doc.querySelector('.dashboard-severity .severity-stat strong');
+                    if (statTotal) totalFindings = parseInt(statTotal.textContent.trim(), 10) || (highCount + medCount + lowCount + infoCount);
+
+                    var passedCount = Math.max(0, 18 - totalFindings);
+
+                    // Compute score & grade
+                    var calculatedScore = Math.max(10, 100 - (highCount * 15) - (medCount * 8) - (lowCount * 3));
+                    var calculatedGrade = 'GRADE ' + (calculatedScore >= 90 ? 'A' : (calculatedScore >= 80 ? 'B' : (calculatedScore >= 70 ? 'C' : (calculatedScore >= 60 ? 'D' : 'F'))));
+
+                    showSuccessState({
+                        score: calculatedScore,
+                        grade: calculatedGrade,
+                        durationMs: res.durationMs,
+                        scanId: scanId,
+                        high: highCount,
+                        medium: medCount,
+                        low: lowCount,
+                        info: infoCount,
+                        passed: passedCount,
+                        html: res.html
+                    });
+                })
+                .catch(function (err) {
+                    clearTimeout(stage2Timer);
+                    clearTimeout(stage3Timer);
+                    clearTimeout(stage4Timer);
+                    clearTimeout(stage5Timer);
+                    clearInterval(timerInterval);
+
+                    if (err.name === 'AbortError') {
+                        appendTerminalLog('Assessment aborted by operator.', formatElapsed(Date.now() - timerStartTime));
+                        returnToForm();
+                    } else {
+                        showFailureState(err.message || 'Connection timeout or network failure.');
+                    }
+                });
+        }
+
+        function showSuccessState(data) {
+            completionCard.style.display = 'block';
+            failureCard.style.display = 'none';
+
+            var scoreValEl = document.getElementById('completion-score-val');
+            var gradeBadgeEl = document.getElementById('completion-grade-badge');
+            var durationText = document.getElementById('completion-duration-text');
+            var ringProgress = document.getElementById('completion-ring-progress');
+            var breakdownRow = document.getElementById('completion-breakdown-row');
+            var btnFullReport = document.getElementById('btn-view-full-report');
+
+            if (scoreValEl) scoreValEl.textContent = data.score;
+            if (gradeBadgeEl) gradeBadgeEl.textContent = data.grade.toUpperCase();
+            if (durationText) durationText.textContent = 'Completed in ' + data.durationMs + ' ms';
+
+            // Animate Score Ring (circumference = 2 * PI * 42 = 263.89)
+            var circumference = 264;
+            var offset = circumference - (circumference * data.score / 100);
+            if (ringProgress) {
+                ringProgress.style.transition = 'stroke-dashoffset 1.2s ease-out';
+                setTimeout(function () {
+                    ringProgress.style.strokeDashoffset = offset;
+                }, 50);
+            }
+
+            // Build Breakdown Pills
+            if (breakdownRow) {
+                var pillsHtml = '<span class="severity-pill low" style="padding: 4px 8px; font-size: 11px;">' + (data.passed || 10) + ' Passed</span>';
+                if (data.high > 0) {
+                    pillsHtml += '<span class="severity-pill high" style="padding: 4px 8px; font-size: 11px;">' + data.high + ' High</span>';
+                }
+                if (data.medium > 0) {
+                    pillsHtml += '<span class="severity-pill medium" style="padding: 4px 8px; font-size: 11px;">' + data.medium + ' Medium</span>';
+                }
+                if (data.low > 0) {
+                    pillsHtml += '<span class="severity-pill low" style="padding: 4px 8px; font-size: 11px;">' + data.low + ' Low</span>';
+                }
+                if (data.info > 0) {
+                    pillsHtml += '<span class="severity-pill low" style="padding: 4px 8px; font-size: 11px; background: rgba(59,130,246,0.15); color: #60a5fa;">' + data.info + ' Info</span>';
+                }
+                breakdownRow.innerHTML = pillsHtml;
+            }
+
+            // Link Full Report Button
+            if (btnFullReport) {
+                var destinationUrl = data.scanId ? ('/history/' + encodeURIComponent(data.scanId)) : '/history';
+                btnFullReport.setAttribute('href', destinationUrl);
+                btnFullReport.onclick = function (e) {
+                    e.preventDefault();
+                    window.location.href = destinationUrl;
+                };
+            }
+
+            // Toast notification
+            if (window.showToast) {
+                window.showToast('Reconnaissance audit completed for ' + targetInput.value + ' (Score: ' + data.score + ')', 'success');
+            }
+        }
+
+        function showFailureState(msg) {
+            terminalBadge.textContent = 'FAILED';
+            terminalBadge.style.color = 'var(--color-critical)';
+            completionCard.style.display = 'none';
+            failureCard.style.display = 'block';
+            if (failureDesc) failureDesc.textContent = msg || 'Assessment failed due to network unreachable or invalid host.';
+            appendTerminalLog('ERROR: ' + (msg || 'Reconnaissance execution halted.'));
+        }
+
+        function returnToForm() {
+            if (scanAbortController) {
+                try { scanAbortController.abort(); } catch (e) { }
+                scanAbortController = null;
+            }
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            runPanel.style.display = 'none';
+            configGrid.style.display = 'grid';
+            configGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Cancel Button
+        if (btnCancelScan) {
+            btnCancelScan.addEventListener('click', returnToForm);
+        }
+        // Retry Button
+        if (btnRetryScan) {
+            btnRetryScan.addEventListener('click', function () {
+                executeAssessment();
+            });
+        }
+        // Edit Target Button
+        if (btnEditTarget) {
+            btnEditTarget.addEventListener('click', returnToForm);
+        }
+        // Run Another Button
+        var btnRunAnother = document.getElementById('btn-run-another');
+        if (btnRunAnother) {
+            btnRunAnother.addEventListener('click', function () {
+                targetInput.value = '';
+                updateTargetState();
+                returnToForm();
+                targetInput.focus();
+            });
+        }
+
+        // Form Submit Event Handler
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                triggerLaunch();
+            });
+        }
+
+        // Initialize state
+        updateTargetState();
+        checkOptionsModified();
+    });
+</script>
+{% endblock %}

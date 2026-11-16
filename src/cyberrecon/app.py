@@ -26,6 +26,7 @@ from werkzeug.security import (
 
 from cyberrecon.scanner.assessment import run_assessment
 from cyberrecon.scanner.comparison import compare_assessments
+from cyberrecon.scanner.security_analysis import SECURITY_CHECK_COUNT
 
 from cyberrecon.storage import (
     create_user,
@@ -433,6 +434,41 @@ def create_app(test_config=None):
 
 
     # =====================================================
+    # NEW ASSESSMENT WORKSPACE
+    # =====================================================
+
+    @app.route("/new")
+    @login_required
+    def new_assessment():
+
+        user_id = session.get("user_id")
+        target = request.args.get("target", "").strip()
+
+        recent_targets = []
+        if user_id:
+            try:
+                scans = get_scan_history(user_id)
+                seen = set()
+                for s in scans:
+                    t = s.get("target", "").strip()
+                    if t and t not in seen:
+                        seen.add(t)
+                        recent_targets.append(t)
+                        if len(recent_targets) >= 4:
+                            break
+            except Exception:
+                pass
+
+        return render_template(
+            "new_assessment.html",
+            target=target,
+            recent_targets=recent_targets,
+            check_count=SECURITY_CHECK_COUNT,
+            error=None,
+        )
+
+
+    # =====================================================
     # REGISTER
     # =====================================================
 
@@ -720,15 +756,58 @@ def create_app(test_config=None):
 
     @app.route(
         "/scan",
-        methods=["POST"],
+        methods=[
+            "GET",
+            "POST",
+        ],
     )
-    @login_required
     def scan():
 
-        target = request.form.get(
-            "target",
-            "",
+        # Gracefully handle GET requests to prevent 405 Method Not Allowed
+        if request.method == "GET":
+            if session.get("user_id"):
+                return redirect(
+                    url_for(
+                        "new_assessment"
+                    )
+                )
+            return redirect(
+                url_for(
+                    "login",
+                    next=url_for(
+                        "new_assessment"
+                    ),
+                )
+            )
+
+        target = (
+            request.form.get(
+                "target",
+                "",
+            )
+            .strip()
         )
+
+        # Preserve intended target safely across authentication flow
+        if session.get("user_id") is None:
+            if target:
+                return redirect(
+                    url_for(
+                        "login",
+                        next=url_for(
+                            "new_assessment",
+                            target=target,
+                        ),
+                    )
+                )
+            return redirect(
+                url_for(
+                    "login",
+                    next=url_for(
+                        "new_assessment"
+                    ),
+                )
+            )
 
         try:
 
@@ -748,10 +827,31 @@ def create_app(test_config=None):
 
         except ValueError as error:
 
+            recent_targets = []
+            try:
+                scans = get_scan_history(
+                    session["user_id"]
+                )
+                seen = set()
+                for s in scans:
+                    t = (
+                        s.get("target", "")
+                        .strip()
+                    )
+                    if t and t not in seen:
+                        seen.add(t)
+                        recent_targets.append(t)
+                        if len(recent_targets) >= 4:
+                            break
+            except Exception:
+                pass
+
             return render_template(
-                "index.html",
+                "new_assessment.html",
                 error=str(error),
                 target=target,
+                recent_targets=recent_targets,
+                check_count=SECURITY_CHECK_COUNT,
             )
 
 
@@ -763,16 +863,23 @@ def create_app(test_config=None):
     @login_required
     def dashboard():
 
+        date_range = request.args.get("range", "all").strip().lower()
+        if date_range not in ("24h", "7d", "30d", "all"):
+            date_range = "all"
+
         analytics = (
             get_dashboard_analytics(
-                session["user_id"]
+                session["user_id"],
+                date_range=date_range,
             )
         )
 
         return render_template(
             "dashboard.html",
             analytics=analytics,
+            active_range=date_range,
         )
+
 
 
     # =====================================================
@@ -799,6 +906,9 @@ def create_app(test_config=None):
 
     @app.route(
         "/history/<scan_id>"
+    )
+    @app.route(
+        "/scan/<scan_id>"
     )
     @login_required
     def scan_detail(scan_id):

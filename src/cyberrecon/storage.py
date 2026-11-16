@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import sqlite3
 
@@ -722,213 +723,203 @@ def get_completed_scans(
 # =========================================================
 
 
-def get_dashboard_analytics(user_id):
+def get_dashboard_analytics(user_id, date_range="all"):
+    """
+    Retrieve comprehensive, user-isolated dashboard security analytics,
+    supporting time-range filtering ('24h', '7d', '30d', 'all').
+    """
+    if date_range not in ("24h", "7d", "30d", "all"):
+        date_range = "all"
 
     with get_connection() as connection:
+        where_scans = "WHERE scans.user_id = ?"
+        params = [user_id]
+
+        if date_range == "24h":
+            where_scans += " AND scans.created_at >= datetime('now', '-24 hours')"
+        elif date_range == "7d":
+            where_scans += " AND scans.created_at >= datetime('now', '-7 days')"
+        elif date_range == "30d":
+            where_scans += " AND scans.created_at >= datetime('now', '-30 days')"
 
         overview = connection.execute(
-            """
+            f"""
             SELECT
                 COUNT(*) AS total_scans,
-
-                COUNT(
-                    DISTINCT target
-                ) AS unique_targets,
-
-                SUM(
-                    CASE
-                        WHEN recon_status = 'Completed'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS successful_scans,
-
-                SUM(
-                    CASE
-                        WHEN recon_status = 'Failed'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS failed_scans
-
+                COUNT(DISTINCT scans.target) AS unique_targets,
+                SUM(CASE WHEN scans.recon_status = 'Completed' THEN 1 ELSE 0 END) AS successful_scans,
+                SUM(CASE WHEN scans.recon_status = 'Failed' THEN 1 ELSE 0 END) AS failed_scans
             FROM scans
-
-            WHERE user_id = ?
+            {where_scans}
             """,
-            (user_id,),
+            params,
         ).fetchone()
-
 
         severity = connection.execute(
-            """
+            f"""
             SELECT
-                COUNT(findings.id)
-                    AS total_findings,
-
-                SUM(
-                    CASE
-                        WHEN findings.severity = 'High'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS high_count,
-
-                SUM(
-                    CASE
-                        WHEN findings.severity = 'Medium'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS medium_count,
-
-                SUM(
-                    CASE
-                        WHEN findings.severity = 'Low'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS low_count,
-
-                SUM(
-                    CASE
-                        WHEN findings.severity = 'Info'
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS info_count
-
+                COUNT(findings.id) AS total_findings,
+                COUNT(DISTINCT findings.finding_code) AS distinct_finding_types,
+                SUM(CASE WHEN findings.severity = 'High' THEN 1 ELSE 0 END) AS high_count,
+                SUM(CASE WHEN findings.severity = 'Medium' THEN 1 ELSE 0 END) AS medium_count,
+                SUM(CASE WHEN findings.severity = 'Low' THEN 1 ELSE 0 END) AS low_count,
+                SUM(CASE WHEN findings.severity = 'Info' THEN 1 ELSE 0 END) AS info_count
             FROM scans
-
-            LEFT JOIN findings
-                ON findings.scan_database_id
-                = scans.id
-
-            WHERE scans.user_id = ?
+            LEFT JOIN findings ON findings.scan_database_id = scans.id
+            {where_scans}
             """,
-            (user_id,),
+            params,
         ).fetchone()
 
-
         recent_scans = connection.execute(
-            """
+            f"""
             SELECT
-                scan_id,
-                target,
-                started_at,
-                recon_status,
-                analysis_status
-
+                scans.scan_id,
+                scans.target,
+                scans.started_at,
+                scans.recon_status,
+                scans.analysis_status,
+                COALESCE(COUNT(findings.id), 0) AS total_findings,
+                COALESCE(SUM(CASE WHEN findings.severity = 'High' THEN 1 ELSE 0 END), 0) AS high_count,
+                COALESCE(SUM(CASE WHEN findings.severity = 'Medium' THEN 1 ELSE 0 END), 0) AS medium_count,
+                COALESCE(SUM(CASE WHEN findings.severity = 'Low' THEN 1 ELSE 0 END), 0) AS low_count,
+                COALESCE(SUM(CASE WHEN findings.severity = 'Info' THEN 1 ELSE 0 END), 0) AS info_count
             FROM scans
-
-            WHERE user_id = ?
-
-            ORDER BY id DESC
-
-            LIMIT 5
+            LEFT JOIN findings ON findings.scan_database_id = scans.id
+            {where_scans}
+            GROUP BY scans.id
+            ORDER BY scans.id DESC
+            LIMIT 8
             """,
-            (user_id,),
+            params,
         ).fetchall()
 
-
-        common_findings = connection.execute(
-            """
+        common_findings_raw = connection.execute(
+            f"""
             SELECT
                 findings.finding_code,
                 findings.name,
                 findings.severity,
-
-                COUNT(*) AS occurrence_count
-
+                COUNT(DISTINCT scans.id) AS affected_assessments,
+                COUNT(*) AS total_occurrences,
+                MAX(scans.scan_id) AS latest_scan_id
             FROM findings
-
-            JOIN scans
-                ON scans.id
-                = findings.scan_database_id
-
-            WHERE scans.user_id = ?
-
-            GROUP BY
-                findings.finding_code,
-                findings.name,
-                findings.severity
-
-            ORDER BY
-                occurrence_count DESC,
-                findings.finding_code ASC
-
+            JOIN scans ON scans.id = findings.scan_database_id
+            {where_scans}
+            GROUP BY findings.finding_code, findings.name, findings.severity
+            ORDER BY affected_assessments DESC, total_occurrences DESC, findings.finding_code ASC
             LIMIT 5
             """,
-            (user_id,),
+            params,
         ).fetchall()
 
+        daily_rows = connection.execute(
+            f"""
+            SELECT
+                DATE(scans.created_at) AS scan_date,
+                COUNT(*) AS scan_count
+            FROM scans
+            {where_scans}
+            GROUP BY scan_date
+            ORDER BY scan_date ASC
+            """,
+            params,
+        ).fetchall()
 
-    overview_data = dict(overview)
+        target_risk_row = connection.execute(
+            f"""
+            SELECT scans.target, COUNT(findings.id) AS finding_count
+            FROM scans
+            JOIN findings ON findings.scan_database_id = scans.id
+            {where_scans}
+            GROUP BY scans.target
+            ORDER BY finding_count DESC
+            LIMIT 1
+            """,
+            params,
+        ).fetchone()
 
-    severity_data = dict(severity)
+        latest_scan_row = connection.execute(
+            f"""
+            SELECT scan_id, target, started_at, duration_ms
+            FROM scans
+            {where_scans} AND recon_status = 'Completed'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            params,
+        ).fetchone()
 
+    overview_data = dict(overview) if overview else {}
+    severity_data = dict(severity) if severity else {}
 
-    for key in (
-        "successful_scans",
-        "failed_scans",
-    ):
-        overview_data[key] = (
-            overview_data[key] or 0
-        )
+    for key in ("total_scans", "unique_targets", "successful_scans", "failed_scans"):
+        overview_data[key] = overview_data.get(key) or 0
 
+    for key in ("total_findings", "distinct_finding_types", "high_count", "medium_count", "low_count", "info_count"):
+        severity_data[key] = severity_data.get(key) or 0
 
-    for key in (
-        "total_findings",
-        "high_count",
-        "medium_count",
-        "low_count",
-        "info_count",
-    ):
-        severity_data[key] = (
-            severity_data[key] or 0
-        )
-
-
-    total_scans = (
-        overview_data["total_scans"]
+    total_scans = overview_data["total_scans"]
+    success_rate = (
+        round((overview_data["successful_scans"] / total_scans) * 100, 1)
+        if total_scans
+        else 0.0
     )
 
-
-    if total_scans:
-
-        success_rate = round(
-            (
-                overview_data[
-                    "successful_scans"
-                ]
-                / total_scans
-            )
-            * 100,
-            1,
+    common_findings = []
+    for idx, row in enumerate(common_findings_raw, 1):
+        item = dict(row)
+        item["rank"] = idx
+        item["occurrence_count"] = item["total_occurrences"]
+        item["affected_pct"] = (
+            round((item["affected_assessments"] / total_scans) * 100, 1)
+            if total_scans
+            else 0.0
         )
+        common_findings.append(item)
 
-    else:
+    timeline = []
+    days_count = 7 if date_range == "7d" else (30 if date_range == "30d" else (1 if date_range == "24h" else 14))
+    daily_map = {row["scan_date"]: row["scan_count"] for row in daily_rows}
+    today = datetime.now(timezone.utc).date()
+    for i in range(days_count - 1, -1, -1):
+        day = today - timedelta(days=i)
+        iso = day.isoformat()
+        count = daily_map.get(iso, 0)
+        label = "Today" if i == 0 else ("Yest." if i == 1 else day.strftime("%b %d"))
+        timeline.append({
+            "date": iso,
+            "label": label,
+            "count": count,
+        })
+    max_activity = max([t["count"] for t in timeline] or [1])
+    if max_activity == 0:
+        max_activity = 1
 
-        success_rate = 0
+    range_labels = {
+        "all": "All Time",
+        "24h": "Last 24 Hours",
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days",
+    }
 
+    insights = {
+        "top_misconfiguration": common_findings[0] if common_findings else None,
+        "highest_risk_target": dict(target_risk_row) if target_risk_row else None,
+        "latest_successful_scan": dict(latest_scan_row) if latest_scan_row else None,
+        "distinct_finding_types": severity_data["distinct_finding_types"],
+        "unique_targets": overview_data["unique_targets"],
+    }
 
     return {
-        "overview":
-            overview_data,
-
-        "severity":
-            severity_data,
-
-        "success_rate":
-            success_rate,
-
-        "recent_scans": [
-            dict(scan)
-            for scan in recent_scans
-        ],
-
-        "common_findings": [
-            dict(finding)
-            for finding
-            in common_findings
-        ],
+        "overview": overview_data,
+        "severity": severity_data,
+        "success_rate": success_rate,
+        "recent_scans": [dict(scan) for scan in recent_scans],
+        "common_findings": common_findings,
+        "activity_timeline": timeline,
+        "max_activity": max_activity,
+        "insights": insights,
+        "date_range": date_range,
+        "range_label": range_labels.get(date_range, "All Time"),
     }

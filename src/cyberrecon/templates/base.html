@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CyberRecon - Non-intrusive, authorized passive web reconnaissance and configuration security assessment platform.">
+    <title>{% block title %}CyberRecon | Passive Web Reconnaissance{% endblock %}</title>
+
+    <!-- Theme initialization script preventing theme flash before first paint -->
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('cyberrecon-theme');
+                if (savedTheme === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+
+    <!-- Centralized Stylesheet Reference & SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z' fill='%2310b981' fill-opacity='0.25' stroke='%2310b981' stroke-width='1.75'/><path d='M9 12l2 2 4-4' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3.1">
+    {% block head %}{% endblock %}
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+{% if active_page in ['login', 'register'] or request.endpoint in ['login', 'register'] %}
+<!-- Minimal Auth Header (Logo only, as requested) -->
+<header class="auth-minimal-header" role="banner">
+    <a href="{{ url_for('home') }}" class="brand auth-minimal-brand" aria-label="CyberRecon Home">
+        <svg class="brand-logo" width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="url(#brand-grad-auth)" stroke="#10b981" stroke-width="1.75" stroke-linejoin="round"/>
+            <path d="M9 12l2 2 4-4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+                <linearGradient id="brand-grad-auth" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#10b981" stop-opacity="0.35"/>
+                    <stop stop-color="#0ea5e9" stop-opacity="0.15"/>
+                </linearGradient>
+            </defs>
+        </svg>
+        <span class="brand-text" style="font-size: 20px;">Cyber<span>Recon</span></span>
+    </a>
+    <button type="button" id="theme-toggle" class="theme-toggle-btn auth-theme-toggle"
+        aria-label="Switch between light and dark theme" title="Toggle visual theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="12" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
+</header>
+{% else %}
+<!-- Shared Application Navbar -->
+<nav class="navbar" role="navigation" aria-label="Main Navigation">
+    <div class="nav-container">
+        <!-- Brand on Left with Logomark -->
+        <a href="{{ url_for('home') }}" class="brand" aria-label="CyberRecon Home">
+            <svg class="brand-logo" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="url(#brand-grad)" stroke="#10b981" stroke-width="1.75" stroke-linejoin="round"/>
+                <path d="M9 12l2 2 4-4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <defs>
+                    <linearGradient id="brand-grad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#10b981" stop-opacity="0.35"/>
+                        <stop stop-color="#0ea5e9" stop-opacity="0.15"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <span class="brand-text">Cyber<span>Recon</span></span>
+        </a>
+
+        <!-- Desktop Controls (>=769px) -->
+        <div class="nav-actions desktop-only">
+            <!-- Command Palette Trigger Button -->
+            <button class="cmd-palette-trigger" id="cmd-palette-btn" type="button" aria-label="Open Command Palette (Ctrl+K)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span>Search</span>
+                <kbd class="cmd-kbd">Ctrl K</kbd>
+            </button>
+
+            {% if current_user_id %}
+            <!-- Authenticated Grouped Navigation Links -->
+            <div class="nav-links-group" role="menubar">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if active_page == 'dashboard' or request.endpoint == 'dashboard' %}active{% endif %}" role="menuitem">Dashboard</a>
+                <a href="{{ url_for('history') }}" class="nav-link {% if active_page == 'history' or request.endpoint == 'history' or request.endpoint == 'scan_detail' %}active{% endif %}" role="menuitem">Scan History</a>
+                <a href="{{ url_for('compare_scans') }}" class="nav-link {% if active_page == 'compare' or request.endpoint == 'compare_scans' %}active{% endif %}" role="menuitem">Compare</a>
+            </div>
+
+            <!-- Visually Prominent New Assessment CTA -->
+            <a href="{{ url_for('new_assessment') }}" class="btn-primary nav-cta-btn {% if active_page == 'new' or request.endpoint == 'new_assessment' %}active-cta{% endif %}" style="padding: 7px 14px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                New Assessment
+            </a>
+            {% else %}
+            <!-- Clean, professional landing page actions without in-page clutter -->
+            <a href="{{ url_for('login') }}" class="btn-ghost">Login</a>
+            <a href="{{ url_for('register') }}" class="btn-primary" style="padding: 7px 16px; font-size: 13px; font-weight: 600; text-decoration: none;">Register</a>
+            {% endif %}
+
+            <!-- Theme Toggle Button -->
+            <button type="button" id="theme-toggle" class="theme-toggle-btn"
+                aria-label="Switch between light and dark theme" title="Toggle visual theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="12" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+
+            <!-- Authenticated User Profile Avatar & Dropdown -->
+            {% if current_user_id %}
+            <div class="user-dropdown-wrap" id="user-dropdown-wrap">
+                <button class="avatar-btn" id="avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="User Account Menu">
+                    <span class="avatar-circle">{{ current_username[0]|upper if current_username else 'U' }}</span>
+                    <span class="avatar-name nav-user">{{ current_username }}</span>
+                    <svg class="avatar-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="user-dropdown-menu" id="user-dropdown-menu" role="menu">
+                    <div class="dropdown-user-info">
+                        <div class="dropdown-username">{{ current_username }}</div>
+                        <div class="dropdown-session">
+                            <span class="dropdown-session-dot"></span>
+                            <span>Session Active</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('dashboard') }}" class="dropdown-item" role="menuitem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        Dashboard
+                    </a>
+                    <a href="{{ url_for('new_assessment') }}" class="dropdown-item" role="menuitem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        New Assessment
+                    </a>
+                    <a href="{{ url_for('history') }}" class="dropdown-item" role="menuitem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Scan History
+                    </a>
+                    <a href="{{ url_for('compare_scans') }}" class="dropdown-item" role="menuitem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Compare Scans
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="{{ url_for('logout') }}" class="dropdown-item danger" role="menuitem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Sign Out
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Mobile Controls (<=768px) -->
+        <div class="nav-mobile-controls">
+            <button type="button" id="theme-toggle-mobile" class="theme-toggle-btn"
+                aria-label="Switch visual theme" title="Toggle visual theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="12" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+
+            <button type="button" id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle navigation drawer" aria-expanded="false">
+                <svg id="menu-icon-bars" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+                <svg id="menu-icon-close" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-nav-drawer" class="mobile-nav-drawer">
+        <div class="mobile-nav-links">
+            {% if current_user_id %}
+            <a href="{{ url_for('dashboard') }}" class="mobile-nav-item {% if active_page == 'dashboard' or request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="{{ url_for('new_assessment') }}" class="mobile-nav-item {% if active_page == 'new' or request.endpoint == 'new_assessment' %}active{% endif %}">New Assessment</a>
+            <a href="{{ url_for('history') }}" class="mobile-nav-item {% if active_page == 'history' or request.endpoint == 'history' or request.endpoint == 'scan_detail' %}active{% endif %}">Scan History</a>
+            <a href="{{ url_for('compare_scans') }}" class="mobile-nav-item {% if active_page == 'compare' or request.endpoint == 'compare_scans' %}active{% endif %}">Compare Scans</a>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="avatar-circle" style="width: 24px; height: 24px; font-size: 11px;">{{ current_username[0]|upper if current_username else 'U' }}</span>
+                    <span class="nav-user">{{ current_username }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn-ghost" style="padding: 4px 10px; font-size: 12px;">Logout</a>
+            </div>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="btn-ghost mobile-auth-btn">Login</a>
+            <a href="{{ url_for('register') }}" class="btn-primary mobile-auth-btn">Register</a>
+            {% endif %}
+            <div class="mobile-status-pill">
+                <span class="status-dot-pulse"></span>
+                PASSIVE RECON ENGINE &bull; 100% ONLINE
+            </div>
+        </div>
+    </div>
+</nav>
+{% endif %}
+
+<!-- Page Content Block -->
+{% block content %}{% endblock %}
+
+<!-- Global Command Palette Modal (Ctrl/Cmd+K) -->
+<div class="cmd-palette-backdrop" id="cmd-palette-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="cmd-palette-dialog">
+        <div class="cmd-search-bar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" class="cmd-search-input" id="cmd-search-input" placeholder="Type a command or search checks..." autocomplete="off">
+            <kbd class="cmd-kbd">Esc</kbd>
+        </div>
+
+        <div class="cmd-results-list" id="cmd-results-list">
+            <div class="cmd-group-label">Navigation</div>
+            {% if current_user_id %}
+            <a href="{{ url_for('new_assessment') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">⚡</span>
+                    <span>Start New Assessment</span>
+                </div>
+                <span class="cmd-shortcut">Enter</span>
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">📊</span>
+                    <span>Dashboard</span>
+                </div>
+            </a>
+            <a href="{{ url_for('history') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">📜</span>
+                    <span>Scan History</span>
+                </div>
+            </a>
+            <a href="{{ url_for('compare_scans') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">⚖️</span>
+                    <span>Compare Scans</span>
+                </div>
+            </a>
+            {% else %}
+            <a href="{{ url_for('home') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">⚡</span>
+                    <span>Start New Assessment</span>
+                </div>
+            </a>
+            <a href="{{ url_for('login') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">🔑</span>
+                    <span>Sign In</span>
+                </div>
+            </a>
+            <a href="{{ url_for('register') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">✨</span>
+                    <span>Create Account</span>
+                </div>
+            </a>
+            {% endif %}
+
+            <div class="cmd-group-label">18 Supported Security Checks</div>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-001')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🔒</span><span>[CR-001] HTTPS Protocol Enforcement</span></div>
+                <span class="cmd-shortcut">Transport</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-002')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🔒</span><span>[CR-002] Strict-Transport-Security (HSTS)</span></div>
+                <span class="cmd-shortcut">Transport</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-003')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-003] Content-Security-Policy (CSP)</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-004')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-004] Clickjacking Protection (X-Frame-Options)</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-005')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-005] MIME-Sniffing Defense (X-Content-Type)</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-006')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🔍</span><span>[CR-006] Web Server Version Disclosed</span></div>
+                <span class="cmd-shortcut">Exposure</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-007')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🔍</span><span>[CR-007] Technology Framework Disclosed (X-Powered-By)</span></div>
+                <span class="cmd-shortcut">Exposure</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-008')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-008] Referrer-Policy Missing</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-009')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-009] Permissions-Policy Missing</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-010')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-010] Unsafe Referrer Policy Directive</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-011')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🛡️</span><span>[CR-011] Potentially Weak CSP Directive</span></div>
+                <span class="cmd-shortcut">Headers</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-012')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🌐</span><span>[CR-012] Wildcard CORS Policy Detected</span></div>
+                <span class="cmd-shortcut">CORS</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-013')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🌐</span><span>[CR-013] Cross-Origin Opener Policy (COOP)</span></div>
+                <span class="cmd-shortcut">Isolation</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-014')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🌐</span><span>[CR-014] Cross-Origin Resource Policy (CORP)</span></div>
+                <span class="cmd-shortcut">Isolation</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-015')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🌐</span><span>[CR-015] Cross-Origin Embedder Policy (COEP)</span></div>
+                <span class="cmd-shortcut">Isolation</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-016')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🍪</span><span>[CR-016] Cookie Missing Secure Flag</span></div>
+                <span class="cmd-shortcut">Cookies</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-017')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🍪</span><span>[CR-017] Cookie Missing HttpOnly Flag</span></div>
+                <span class="cmd-shortcut">Cookies</span>
+            </a>
+            <a href="#checks" class="cmd-item" onclick="if(window.focusCheck) window.focusCheck('CR-018')">
+                <div class="cmd-item-left"><span class="cmd-item-icon">🍪</span><span>[CR-018] Cookie SameSite Attribute Missing</span></div>
+                <span class="cmd-shortcut">Cookies</span>
+            </a>
+
+            <div class="cmd-group-label">Documentation &amp; Ethics</div>
+            <a href="#responsible-use" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">⚖️</span>
+                    <span>Responsible Use: Defensive Boundaries</span>
+                </div>
+                <span class="cmd-shortcut">Ethics</span>
+            </a>
+            <a href="#faq" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">🛡️</span>
+                    <span>SSRF Safeguards (RFC 1918 &amp; Metadata)</span>
+                </div>
+                <span class="cmd-shortcut">FAQ</span>
+            </a>
+            <a href="#sample-report" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">📄</span>
+                    <span>Sample Security Assessment Report</span>
+                </div>
+                <span class="cmd-shortcut">Report</span>
+            </a>
+
+            <div class="cmd-group-label">Quick Actions</div>
+            <div class="cmd-item" id="cmd-toggle-theme-action" role="button" tabindex="0">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">🌓</span>
+                    <span>Toggle Light / Dark Theme</span>
+                </div>
+                <span class="cmd-shortcut">T</span>
+            </div>
+
+            {% if current_user_id %}
+            <a href="{{ url_for('logout') }}" class="cmd-item">
+                <div class="cmd-item-left">
+                    <span class="cmd-item-icon">🚪</span>
+                    <span>Sign Out</span>
+                </div>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="cmd-footer">
+            <div class="cmd-footer-keys">
+                <span><kbd class="cmd-kbd">↑</kbd> <kbd class="cmd-kbd">↓</kbd> Navigate</span>
+                <span><kbd class="cmd-kbd">↵</kbd> Select</span>
+                <span><kbd class="cmd-kbd">Esc</kbd> Close</span>
+            </div>
+            <span>CyberRecon Command Palette</span>
+        </div>
+    </div>
+</div>
+
+<!-- Global Toast Notification Container -->
+<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Extra Modals Slot -->
+{% block extra_modals %}{% endblock %}
+
+<!-- Core Application Shell Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Theme Management
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        try {
+            localStorage.setItem('cyberrecon-theme', theme);
+        } catch (e) {}
+    }
+
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme') || 'dark';
+        var next = (current === 'light') ? 'dark' : 'light';
+        setTheme(next);
+    }
+
+    var toggleDesktop = document.getElementById('theme-toggle');
+    var toggleMobile = document.getElementById('theme-toggle-mobile');
+    if (toggleDesktop) toggleDesktop.addEventListener('click', toggleTheme);
+    if (toggleMobile) toggleMobile.addEventListener('click', toggleTheme);
+
+    // 2. User Account Dropdown
+    var avatarBtn = document.getElementById('avatar-btn');
+    var userDropdownMenu = document.getElementById('user-dropdown-menu');
+    if (avatarBtn && userDropdownMenu) {
+        avatarBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = userDropdownMenu.classList.toggle('show');
+            avatarBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+        document.addEventListener('click', function (e) {
+            if (!avatarBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+                userDropdownMenu.classList.remove('show');
+                avatarBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // 3. Mobile Navigation Drawer Toggle
+    var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    var mobileDrawer = document.getElementById('mobile-nav-drawer');
+    var iconBars = document.getElementById('menu-icon-bars');
+    var iconClose = document.getElementById('menu-icon-close');
+
+    if (mobileMenuBtn && mobileDrawer) {
+        mobileMenuBtn.addEventListener('click', function () {
+            var isOpen = mobileDrawer.classList.toggle('open');
+            mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            if (iconBars && iconClose) {
+                iconBars.style.display = isOpen ? 'none' : 'block';
+                iconClose.style.display = isOpen ? 'block' : 'none';
+            }
+        });
+    }
+
+    // 4. Command Palette (Ctrl/Cmd+K)
+    var cmdModal = document.getElementById('cmd-palette-modal');
+    var cmdSearchInput = document.getElementById('cmd-search-input');
+    var cmdTriggerBtn = document.getElementById('cmd-palette-btn');
+    var cmdThemeAction = document.getElementById('cmd-toggle-theme-action');
+
+    function openCommandPalette() {
+        if (!cmdModal) return;
+        cmdModal.classList.add('active');
+        cmdModal.classList.add('show');
+        cmdModal.setAttribute('aria-hidden', 'false');
+        if (cmdSearchInput) {
+            cmdSearchInput.value = '';
+            cmdSearchInput.focus();
+            filterCommands('');
+        }
+    }
+
+    function closeCommandPalette() {
+        if (!cmdModal) return;
+        cmdModal.classList.remove('active');
+        cmdModal.classList.remove('show');
+        cmdModal.setAttribute('aria-hidden', 'true');
+    }
+
+    if (cmdTriggerBtn) {
+        cmdTriggerBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openCommandPalette();
+        });
+    }
+
+    // Also support any element with .cmd-palette-trigger
+    document.querySelectorAll('.cmd-palette-trigger').forEach(function(btn) {
+        if (btn !== cmdTriggerBtn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openCommandPalette();
+            });
+        }
+    });
+
+    if (cmdThemeAction) {
+        cmdThemeAction.addEventListener('click', function () {
+            toggleTheme();
+            closeCommandPalette();
+        });
+    }
+
+    if (cmdModal) {
+        cmdModal.addEventListener('click', function (e) {
+            if (e.target === cmdModal) closeCommandPalette();
+        });
+    }
+
+    function filterCommands(query) {
+        var items = document.querySelectorAll('.cmd-results-list .cmd-item');
+        var q = query.toLowerCase().trim();
+        items.forEach(function (item) {
+            var text = item.textContent.toLowerCase();
+            item.style.display = (!q || text.indexOf(q) !== -1) ? 'flex' : 'none';
+        });
+    }
+
+    if (cmdSearchInput) {
+        cmdSearchInput.addEventListener('input', function () {
+            filterCommands(this.value);
+        });
+    }
+
+    document.addEventListener('keydown', function (e) {
+        var isOpen = cmdModal && (cmdModal.classList.contains('show') || cmdModal.classList.contains('active'));
+        // Toggle palette with Ctrl+K or Cmd+K
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            if (isOpen) {
+                closeCommandPalette();
+            } else {
+                openCommandPalette();
+            }
+        }
+        // Dismiss with Esc
+        if (e.key === 'Escape' && isOpen) {
+            closeCommandPalette();
+        }
+        // Theme toggle with 't' when palette is open
+        if ((e.key === 't' || e.key === 'T') && isOpen && document.activeElement !== cmdSearchInput) {
+            toggleTheme();
+            closeCommandPalette();
+        }
+    });
+
+    // 5. Global Toast Notification System
+    window.showToast = function (message, type, duration) {
+        var container = document.getElementById('toast-container');
+        if (!container) return;
+
+        type = type || 'info';
+        duration = duration || 3500;
+
+        var toast = document.createElement('div');
+        toast.className = 'toast-item toast-' + type;
+
+        var icons = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+
+        toast.innerHTML =
+            '<div style="display: flex; align-items: center; gap: 8px;">' +
+            '<span class="toast-icon">' + (icons[type] || 'ℹ') + '</span>' +
+            '<span class="toast-text">' + message + '</span>' +
+            '</div>' +
+            '<button type="button" class="toast-dismiss-btn" aria-label="Close notification">&times;</button>';
+
+        container.appendChild(toast);
+
+        var dismissBtn = toast.querySelector('.toast-dismiss-btn');
+        function removeToast() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(8px)';
+            setTimeout(function () {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 200);
+        }
+
+        if (dismissBtn) dismissBtn.addEventListener('click', removeToast);
+        setTimeout(removeToast, duration);
+    };
+
+    // 6. Header Scroll Transition (Sticky shrink & blur)
+    var navEl = document.querySelector('.navbar');
+    if (navEl) {
+        window.addEventListener('scroll', function () {
+            if (window.scrollY > 15) {
+                navEl.classList.add('scrolled');
+            } else {
+                navEl.classList.remove('scrolled');
+            }
+        }, { passive: true });
+    }
+
+    // 7. Command Palette jump-to-check handler
+    window.focusCheck = function (checkId) {
+        closeCommandPalette();
+        var target = document.getElementById('check-' + checkId.toLowerCase()) || document.getElementById('checks');
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.add('highlight-pulse');
+            setTimeout(function () { target.classList.remove('highlight-pulse'); }, 2200);
+        }
+    };
+});
+</script>
+
+<!-- Page Specific JavaScript Block -->
+{% block scripts %}{% endblock %}
+</body>
+</html>

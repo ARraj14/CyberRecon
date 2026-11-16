@@ -1,38 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% set active_page = "login" %}
 
-<head>
-    <meta charset="UTF-8">
+{% block title %}Login | CyberRecon{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Login | CyberRecon
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
+{% block extra_head %}
     <style>
         .auth-container {
             width: min(460px, 92%);
-            margin: 80px auto;
+            margin: 40px auto 80px auto;
         }
 
         .auth-card {
-            padding: 32px;
-            border: 1px solid #1d3448;
-            border-radius: 12px;
-            background: rgba(8, 17, 28, 0.9);
+            padding: 36px 32px;
+            border: 1px solid var(--border-card, #cbd5e1);
+            border-radius: var(--radius-lg, 12px);
+            background: var(--surface, #ffffff);
+            color: var(--text-primary, #0f172a);
+            box-shadow: var(--shadow-card);
         }
 
         .auth-card h1 {
             margin-top: 0;
+            color: var(--text-primary, #0f172a);
         }
 
         .auth-form {
@@ -44,170 +33,146 @@
         .auth-form label {
             display: block;
             margin-bottom: 7px;
-            color: #8295a8;
+            color: var(--text-secondary, #64748b);
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: 0.6px;
+            text-transform: uppercase;
         }
 
         .auth-form input {
             width: 100%;
             box-sizing: border-box;
             padding: 12px 14px;
-            border: 1px solid #294258;
-            border-radius: 7px;
-            background: #08131f;
-            color: #d8e4ed;
+            border: 1px solid var(--border-card, #cbd5e1);
+            border-radius: var(--radius-sm, 7px);
+            background: var(--surface-input, #ffffff);
+            color: var(--text-primary, #0f172a);
+            font-size: 14px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--accent-cyan, #0284c7);
+            box-shadow: 0 0 0 3px var(--accent-cyan-subtle);
         }
 
         .auth-form button {
             padding: 13px;
             border: 0;
-            border-radius: 7px;
+            border-radius: var(--radius-sm, 7px);
             cursor: pointer;
             font-weight: 700;
+            background: var(--accent-emerald, #059669);
+            color: var(--text-on-accent, #ffffff);
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+
+        .auth-form button:hover {
+            filter: brightness(1.08);
+            transform: translateY(-1px);
         }
 
         .auth-error {
             margin-top: 18px;
-            padding: 12px;
-            border-radius: 7px;
-            color: #ff8e98;
-            background: rgba(150, 35, 45, 0.15);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm, 7px);
+            color: var(--sev-critical);
+            background: var(--sev-critical-bg);
+            border: 1px solid var(--sev-critical-border);
+            font-size: 13px;
         }
 
         .auth-footer {
-            margin-top: 20px;
-            color: #8295a8;
+            margin-top: 24px;
+            color: var(--text-secondary, #64748b);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .auth-footer a {
+            color: var(--accent-cyan, #0284c7);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
         }
     </style>
-</head>
+{% endblock %}
 
+{% block content %}
+    <main class="auth-container">
 
-<body>
+        <div class="auth-card">
 
-<nav class="navbar">
-
-    <div class="brand">
-        Cyber<span>Recon</span>
-    </div>
-
-    <div class="nav-actions">
-
-        <a
-            href="{{ url_for('home') }}"
-            class="nav-link"
-        >
-            Home
-        </a>
-
-        <a
-            href="{{ url_for('register') }}"
-            class="nav-link"
-        >
-            Register
-        </a>
-
-    </div>
-
-</nav>
-
-
-<main class="auth-container">
-
-    <div class="auth-card">
-
-        <div class="tag">
-            AUTHENTICATION
-        </div>
-
-        <h1>
-            Sign in to
-            <span>CyberRecon.</span>
-        </h1>
-
-        <p class="subtitle">
-            Access your assessments, dashboard,
-            reports and historical comparisons.
-        </p>
-
-
-        {% if error %}
-
-        <div class="auth-error">
-            {{ error }}
-        </div>
-
-        {% endif %}
-
-
-        <form
-            method="POST"
-            action="{{ url_for('login', next=request.args.get('next')) }}"
-            class="auth-form"
-        >
-
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token }}"
-            >
-
-            <input
-                type="hidden"
-                name="next"
-                value="{{ request.args.get('next', '') }}"
-            >
-
-
-            <div>
-                <label for="email">
-                    EMAIL ADDRESS
-                </label>
-
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autocomplete="email"
-                    required
-                >
+            <div class="tag">
+                AUTHENTICATION
             </div>
 
+            <h1>
+                Sign in to
+                <span>CyberRecon.</span>
+            </h1>
 
-            <div>
-                <label for="password">
-                    PASSWORD
-                </label>
+            <p class="subtitle">
+                Access your assessments, dashboard,
+                reports and historical comparisons.
+            </p>
 
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                >
+
+            {% if error %}
+
+            <div class="auth-error">
+                {{ error }}
             </div>
 
-
-            <button type="submit">
-                Login
-            </button>
-
-        </form>
+            {% endif %}
 
 
-        <p class="auth-footer">
-            Don't have an account?
-            <a href="{{ url_for('register') }}">
-                Register
-            </a>
-        </p>
+            <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}" class="auth-form">
 
-    </div>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-</main>
+                <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
 
-</body>
 
-</html>
+                <div>
+                    <label for="email">
+                        EMAIL ADDRESS
+                    </label>
+
+                    <input id="email" name="email" type="email" autocomplete="email" required>
+                </div>
+
+
+                <div>
+                    <label for="password">
+                        PASSWORD
+                    </label>
+
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+
+
+                <button type="submit">
+                    Login
+                </button>
+
+            </form>
+
+
+            <p class="auth-footer">
+                Don't have an account?
+                <a href="{{ url_for('register') }}">
+                    Register
+                </a>
+            </p>
+
+        </div>
+
+    </main>
+{% endblock %}
