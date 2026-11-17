@@ -1,8 +1,13 @@
 import time
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
-from zoneinfo import ZoneInfo
+
+try:
+    from zoneinfo import ZoneInfo
+    INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
+except Exception:
+    INDIA_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="IST")
 
 from cyberrecon.scanner.reconnaissance import (
     perform_reconnaissance,
@@ -17,11 +22,6 @@ from cyberrecon.scanner.security_analysis import (
 from cyberrecon.scanner.target import (
     has_explicit_scheme,
     normalize_target,
-)
-
-
-INDIA_TIMEZONE = ZoneInfo(
-    "Asia/Kolkata"
 )
 
 

@@ -868,6 +868,8 @@
             targetInput.value = paramTarget;
         }
 
+        var allowPrivateTargets = {% if allow_private_targets %}true{% else %}false{% endif %};
+
         // -------------------------------------------------------------
         // Target Normalization & SSRF Pre-validation
         // -------------------------------------------------------------
@@ -898,32 +900,34 @@
                 var isBlocked = false;
                 var blockedReason = '';
 
-                if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.startsWith('127.')) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: Loopback address is blocked.';
-                } else if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: Cloud instance metadata service (169.254.169.254) is blocked.';
-                } else if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: RFC 1918 Class A private subnet (10.0.0.0/8) is blocked.';
-                } else if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: RFC 1918 Class B private subnet (172.16.0.0/12) is blocked.';
-                } else if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: RFC 1918 Class C private subnet (192.168.0.0/16) is blocked.';
-                } else if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.corp')) {
-                    isBlocked = true;
-                    blockedReason = 'SSRF Safeguard: Non-public top level domain is blocked.';
+                if (!allowPrivateTargets) {
+                    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.startsWith('127.')) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: Loopback address is blocked.';
+                    } else if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: Cloud instance metadata service (169.254.169.254) is blocked.';
+                    } else if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: RFC 1918 Class A private subnet (10.0.0.0/8) is blocked.';
+                    } else if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: RFC 1918 Class B private subnet (172.16.0.0/12) is blocked.';
+                    } else if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: RFC 1918 Class C private subnet (192.168.0.0/16) is blocked.';
+                    } else if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.corp')) {
+                        isBlocked = true;
+                        blockedReason = 'SSRF Safeguard: Non-public top level domain is blocked.';
+                    }
+
+                    if (isBlocked) {
+                        return { state: 'blocked', normalized: candidate, message: blockedReason };
+                    }
                 }
 
-                if (isBlocked) {
-                    return { state: 'blocked', normalized: candidate, message: blockedReason };
-                }
-
-                // Valid host syntax check (hostname must contain a dot or valid IP)
-                if (!hostname.includes('.')) {
+                // Valid host syntax check (hostname must contain a dot or valid IP or localhost)
+                if (!hostname.includes('.') && hostname !== 'localhost') {
                     return { state: 'invalid', normalized: candidate, message: 'Invalid domain: missing top-level domain.' };
                 }
 
