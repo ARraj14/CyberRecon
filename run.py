@@ -31,8 +31,15 @@ if __name__ == "__main__":
         == "1"
     )
 
+    port = int(
+        os.environ.get(
+            "CYBERRECON_PORT",
+            "5001",
+        )
+    )
+
     app.run(
         host="127.0.0.1",
-        port=5001,
+        port=port,
         debug=debug_enabled,
     )

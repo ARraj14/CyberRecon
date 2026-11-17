@@ -27,6 +27,7 @@ from werkzeug.security import (
 from cyberrecon.scanner.assessment import run_assessment
 from cyberrecon.scanner.comparison import compare_assessments
 from cyberrecon.scanner.security_analysis import SECURITY_CHECK_COUNT
+from cyberrecon.scanner.target import private_targets_allowed
 
 from cyberrecon.storage import (
     create_user,
@@ -418,6 +419,9 @@ def create_app(test_config=None):
 
             "csrf_token":
                 generate_csrf_token(),
+
+            "allow_private_targets":
+                private_targets_allowed(),
         }
 
 
